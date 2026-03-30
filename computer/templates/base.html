@@ -1,24 +1,25 @@
 {% load static %}
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đại Lý Bia Tân Tiến</title>
+
     <link rel="icon" type="image/png" href="{% static 'computer_table/img/favicon.ico' %}" />
     <link rel="stylesheet" href="{% static 'computer_table/bootstrap/css/bootstrap.min.css' %}" />
-    {% comment %} <link rel="stylesheet" type="text/css" href="{% static 'DataTables/datatables.css' %}" /> {% endcomment %}
     <link rel="stylesheet" type="text/css" href="{% static 'DataTables/datatables.min.css' %}" />
-    {% block link %}
 
-    {% endblock %}
+    {% block link %}{% endblock %}
   </head>
 
   <body data-bs-theme="light">
     <div class="row justify-content-between bg-success pb-2">
       <div class="d-flex justify-content-center align-items-center dt-layout-start col-md-auto me-auto fs-5 fw-bold text-white text-center">
-        <img src="{% static 'images/conkhi.jpg' %}" width="60px" height="60px" class="img-fluid ms-3" />
+        <img src="{% static 'images/conkhi.jpg' %}" width="60" height="60" class="img-fluid ms-3" />
         <div class="container align-middle fs-6">
-          QUẢN LÝ BÁN HÀNG<br />Đại Lý Bia Tân Tiến
+          QUẢN LÝ BÁN HÀNG<br />
+          Đại Lý Bia Tân Tiến
         </div>
       </div>
 
@@ -26,77 +27,68 @@
         {% if request.user.is_authenticated %}
           {% if request.user.is_superuser %}
             <div class="dropdown">
-              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Quản lý</button>
+              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Quản lý
+              </button>
               <ul class="dropdown-menu">
-                <li>
-                  <a class="dropdown-item" href="/dashboard/">Dashboard</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/product/manage">Quản Lý Sản Phẩm</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/customer/debt/">Công Nợ Khách Hàng</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/statistics/sales/">Thống Kê</a>
-                </li>
+                <li><a class="dropdown-item" href="/dashboard/">Dashboard</a></li>
+                <li><a class="dropdown-item" href="/product/manage">Quản Lý Sản Phẩm</a></li>
+                <li><a class="dropdown-item" href="/customer/debt/">Công Nợ Khách Hàng</a></li>
+                <li><a class="dropdown-item" href="/statistics/sales/">Thống Kê</a></li>
               </ul>
             </div>
 
             <div class="dropdown">
-              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Nhập hàng</button>
+              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Nhập hàng
+              </button>
               <ul class="dropdown-menu">
-                <li>
-                  <a class="dropdown-item" href="/import-receipt/">Phiếu Nhập</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/supplier/">Nhà Cung Cấp</a>
-                </li>
+                <li><a class="dropdown-item" href="/import-receipt/">Phiếu Nhập</a></li>
+                <li><a class="dropdown-item" href="/supplier/">Nhà Cung Cấp</a></li>
               </ul>
             </div>
 
             <div class="dropdown">
-              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Bán hàng</button>
+              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Bán hàng
+              </button>
               <ul class="dropdown-menu">
-                <li>
-                  <a class="dropdown-item" href="/pos/">POS</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/sale-invoice/">Hóa Đơn Bán</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/customer/">Khách Hàng</a>
-                </li>
+                <li><a class="dropdown-item" href="/pos/">POS</a></li>
+                <li><a class="dropdown-item" href="/sale-invoice/">Hóa Đơn Bán</a></li>
+                <li><a class="dropdown-item" href="/customer/">Khách Hàng</a></li>
               </ul>
             </div>
 
             <div class="dropdown">
-              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Hệ thống</button>
+              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Hệ thống
+              </button>
               <ul class="dropdown-menu">
-                <li>
-                  <a class="dropdown-item" href="/accounts-manager/">Quản Lý Tài Khoản</a>
-                </li>
+                <li><a class="dropdown-item" href="/accounts-manager/">Quản Lý Tài Khoản</a></li>
               </ul>
             </div>
           {% else %}
             <div class="dropdown">
-              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Bán hàng</button>
+              <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Bán hàng
+              </button>
               <ul class="dropdown-menu">
-                <li>
-                  <a class="dropdown-item" href="/pos/">POS</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/sale-invoice/">Hóa Đơn Bán</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/customer/">Khách Hàng</a>
-                </li>
+                <li><a class="dropdown-item" href="/pos/">POS</a></li>
+                <li><a class="dropdown-item" href="/sale-invoice/">Hóa Đơn Bán</a></li>
+                <li><a class="dropdown-item" href="/customer/">Khách Hàng</a></li>
               </ul>
             </div>
           {% endif %}
 
           <div class="form-check form-switch text-white ms-2">
-            <input type="checkbox" class="form-check-input p-2" role="switch" id="flexSwitchCheckChecked" checked onclick="dark_mode()" />
+            <input
+              type="checkbox"
+              class="form-check-input p-2"
+              role="switch"
+              id="flexSwitchCheckChecked"
+              checked
+              onclick="dark_mode()"
+            />
             <label class="form-check-label" for="flexSwitchCheckChecked">Dark/Light</label>
           </div>
 
@@ -109,39 +101,20 @@
           </span>
 
           <span class="text-white fw-bold">{{ request.user.username }}</span>
-
           <a href="/logout" class="btn btn-danger">Thoát</a>
         {% endif %}
       </div>
     </div>
 
-    {% block index %}
+    {% block index %}{% endblock %}
+    {% block manage %}{% endblock %}
+    {% block viewpc %}{% endblock %}
 
-    {% endblock %}
-
-    {% block manage %}
-
-    {% endblock %}
-
-    {% block viewpc %}
-
-    {% endblock %}
-
-    <!-- Scripts for Bootstrap JS -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    {% comment %} <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script> {% endcomment %}
     <script src="{% static 'computer_table/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-
-    <!-- Datatable -->
-    {% comment %} <script type="text/javascript" src="{% static 'DataTables/datatables.js' %}"></script> {% endcomment %}
     <script type="text/javascript" src="{% static 'DataTables/datatables.min.js' %}"></script>
 
-    {% block script_index %}
-
-    {% endblock %}
-
-    {% block script_manage %}
-
-    {% endblock %}
+    {% block script_index %}{% endblock %}
+    {% block script_manage %}{% endblock %}
   </body>
 </html>
