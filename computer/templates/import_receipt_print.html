@@ -1,0 +1,329 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>In phiếu nhập #{{ receipt.id }}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: #000;
+        margin: 0;
+        padding: 24px;
+        background: #fff;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+      }
+      
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 2px solid #000;
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+      }
+      
+      .header h2 {
+        margin: 0 0 8px 0;
+      }
+      
+      .header p {
+        margin: 2px 0;
+      }
+      
+      .section-title {
+        margin: 20px 0 10px;
+        font-size: 16px;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 24px;
+        margin-bottom: 20px;
+      }
+      
+      .info-grid div {
+        border: 1px solid #ddd;
+        padding: 8px 10px;
+        border-radius: 4px;
+      }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      
+      table th,
+      table td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+        vertical-align: middle;
+      }
+      
+      table th {
+        background: #f2f2f2;
+      }
+      
+      .text-right {
+        text-align: right;
+      }
+      
+      .summary {
+        margin-top: 20px;
+        width: 100%;
+        max-width: 380px;
+        margin-left: auto;
+      }
+      
+      .summary table td {
+        border: 1px solid #000;
+        padding: 8px;
+      }
+      
+      .summary .label {
+        font-weight: bold;
+        width: 55%;
+      }
+      
+      .notes {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #000;
+        min-height: 50px;
+      }
+      
+      .toolbar {
+        text-align: right;
+        margin-bottom: 20px;
+      }
+      
+      .toolbar button {
+        padding: 10px 16px;
+        border: none;
+        background: #111;
+        color: #fff;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-left: 8px;
+      }
+      
+      .toolbar button.secondary {
+        background: #666;
+      }
+      
+      .signatures {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 50px;
+        text-align: center;
+      }
+      
+      .sign-box {
+        width: 32%;
+      }
+      
+      .sign-box .title {
+        font-weight: bold;
+        margin-bottom: 60px;
+      }
+      
+      @media print {
+        .toolbar {
+          display: none;
+        }
+      
+        body {
+          padding: 0;
+        }
+      
+        .container {
+          max-width: 100%;
+        }
+      
+        @page {
+          size: A4;
+          margin: 12mm;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="toolbar">
+        <button onclick="window.print()">In phiếu nhập</button>
+        <button class="secondary" onclick="window.close()">Đóng</button>
+      </div>
+
+      <div class="header">
+        <div>
+          <h2>ĐẠI LÝ BIA TÂN TIẾN</h2>
+          <p>Địa chỉ: Mỹ Thới</p>
+          <p>SĐT: 0909090909</p>
+        </div>
+
+        <div>
+          <h2>PHIẾU NHẬP HÀNG</h2>
+          <p>
+            <strong>Mã phiếu:</strong> #{{ receipt.id }}
+          </p>
+          <p>
+            <strong>Ngày lập:</strong> {{ receipt.created_at|date:'d/m/Y H:i' }}
+          </p>
+          <p>
+            <strong>Người lập phiếu:</strong>
+            {% if receipt.created_by %}
+              {% if receipt.created_by.last_name or receipt.created_by.first_name %}
+                {{ receipt.created_by.last_name }} {{ receipt.created_by.first_name }}
+              {% else %}
+                {{ receipt.created_by.username }}
+              {% endif %}
+            {% else %}
+              ---
+            {% endif %}
+          </p>
+          <p>
+            <strong>Trạng thái:</strong>
+            {% if receipt.status == 'draft' %}
+              Nháp
+            {% else %}
+              Đã xác nhận
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="section-title">Thông tin nhà cung cấp</div>
+      <div class="info-grid">
+        <div>
+          <strong>Tên nhà cung cấp:</strong><br />
+          {{ receipt.supplier.name }}
+        </div>
+
+        <div>
+          <strong>Số điện thoại:</strong><br />
+          {{ receipt.supplier.phone|default:'---' }}
+        </div>
+
+        <div>
+          <strong>Địa chỉ:</strong><br />
+          {{ receipt.supplier.address|default:'---' }}
+        </div>
+
+        <div>
+          <strong>Trạng thái thanh toán:</strong><br />
+          {% if receipt.payment_status == 'unpaid' %}
+            Chưa thanh toán
+          {% elif receipt.payment_status == 'partial' %}
+            Thanh toán một phần
+          {% elif receipt.payment_status == 'paid' %}
+            Đã thanh toán
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="section-title">Chi tiết phiếu nhập</div>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Sản phẩm</th>
+            <th>Đơn vị</th>
+            <th>Số lượng</th>
+            <th>Giá nhập</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in details %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ d.product_variant.product.name }}</td>
+              <td>{{ d.product_variant.unit.name }}</td>
+              <td>{{ d.quantity }}</td>
+              <td class="text-right">{{ d.price|floatformat:0|intcomma }} VNĐ</td>
+              <td class="text-right">{{ d.subtotal|floatformat:0|intcomma }} VNĐ</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="text-right">Không có dữ liệu</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <table>
+          <tr>
+            <td class="label">Tổng tiền nhập</td>
+            <td class="text-right">{{ receipt.total_amount|floatformat:0|intcomma }} VNĐ</td>
+          </tr>
+          <tr>
+            <td class="label">Đã thanh toán</td>
+            <td class="text-right">{{ receipt.paid_amount|floatformat:0|intcomma }} VNĐ</td>
+          </tr>
+          <tr>
+            <td class="label">Còn nợ</td>
+            <td class="text-right">{{ receipt.debt|floatformat:0|intcomma }} VNĐ</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="section-title">Lịch sử thanh toán</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ngày</th>
+            <th>Số tiền</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+            <tr>
+              <td>{{ p.date|date:'d/m/Y H:i' }}</td>
+              <td class="text-right">{{ p.amount|floatformat:0|intcomma }} VNĐ</td>
+              <td>{{ p.note|default:'' }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="3" class="text-center">Chưa có thanh toán</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="section-title">Ghi chú</div>
+      <div class="notes">....................................................................................................................</div>
+
+      <div class="signatures">
+        <div class="sign-box">
+          <div class="title">Người lập phiếu</div>
+          <div>(Ký, ghi rõ họ tên)</div>
+        </div>
+
+        <div class="sign-box">
+          <div class="title">Nhà cung cấp</div>
+          <div>(Ký, ghi rõ họ tên)</div>
+        </div>
+
+        <div class="sign-box">
+          <div class="title">Quản lý</div>
+          <div>(Ký, ghi rõ họ tên)</div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

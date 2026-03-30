@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h4>Hóa đơn bán #{{ invoice.id }}</h4>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" id="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <p>
+      <strong>Loại khách:</strong>
+      {% if invoice.customer %}
+        Khách hàng
+      {% else %}
+        Khách lẻ
+      {% endif %}
+    </p>
+
+    <p>
+      <strong>Khách hàng:</strong>
+      {% if invoice.customer %}
+        {{ invoice.customer.name }}
+      {% else %}
+        Khách lẻ
+      {% endif %}
+    </p>
+
+    <p>
+      <strong>Ngày lập:</strong> {{ invoice.created_at }}
+    </p>
+    <p>
+      <strong>Người tạo phiếu:</strong>
+      {% if invoice.created_by %}
+        {% if invoice.created_by.last_name or invoice.created_by.first_name %}
+          {{ invoice.created_by.last_name }} {{ invoice.created_by.first_name }}
+        {% else %}
+          {{ invoice.created_by.username }}
+        {% endif %}
+      {% else %}
+        ---
+      {% endif %}
+    </p>
+    <p>
+      <strong>Trạng thái hóa đơn:</strong>
+      {% if invoice.status == 'draft' %}
+        <span class="badge bg-warning text-dark">Nháp</span>
+      {% elif invoice.status == 'confirmed' %}
+        <span class="badge bg-success">Đã xác nhận</span>
+      {% endif %}
+    </p>
+
+    <p>
+      <strong>Trạng thái thanh toán:</strong>
+      {% if invoice.payment_status == 'unpaid' %}
+        <span class="badge bg-danger">Chưa thanh toán</span>
+      {% elif invoice.payment_status == 'partial' %}
+        <span class="badge bg-warning text-dark">Thanh toán một phần</span>
+      {% elif invoice.payment_status == 'paid' %}
+        <span class="badge bg-success">Đã thanh toán</span>
+      {% endif %}
+    </p>
+
+    <p>
+      <strong>Ghi chú:</strong> {{ invoice.note|default:'---' }}
+    </p>
+
+    <div class="mb-3">
+      {% if invoice.status == 'draft' %}
+        <a href="{% url 'sale_invoice_update' invoice.id %}" class="btn btn-warning">Sửa hóa đơn</a>
+
+        <a href="{% url 'confirm_sale_invoice' invoice.id %}" class="btn btn-success" onclick="return confirm('Bạn có chắc muốn xác nhận hóa đơn bán này không?');">Xác nhận hóa đơn</a>
+
+        <a href="{% url 'delete_sale_invoice' invoice.id %}" class="btn btn-danger" onclick="return confirm('Bạn có chắc muốn xóa hóa đơn bán này không?');">Xóa hóa đơn</a>
+      {% endif %}
+
+      <a href="{% url 'sale_invoice_print' invoice.id %}" target="_blank" class="btn btn-dark">In hóa đơn</a>
+    </div>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th>Số lượng</th>
+          <th>Đơn giá</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in details %}
+          <tr>
+            <td>{{ d.product_variant.product.name }}</td>
+            <td>{{ d.quantity }}</td>
+            <td>{{ d.price|floatformat:0|intcomma }} VNĐ</td>
+            <td>{{ d.subtotal|floatformat:0|intcomma }} VNĐ</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4" class="text-center">Chưa có chi tiết hóa đơn</td>
+          </tr>
+        {% endfor %}
+
+        <tr class="table-light">
+          <td colspan="3" class="text-end">
+            <strong>Tổng trước giảm</strong>
+          </td>
+          <td>
+            <strong>{{ invoice.total_amount|floatformat:0|intcomma }} VNĐ</strong>
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="3" class="text-end">
+            <strong>Loại giảm giá</strong>
+          </td>
+          <td>
+            {% if invoice.discount_type == 'percent' %}
+              Giảm theo %
+            {% elif invoice.discount_type == 'amount' %}
+              Giảm theo tiền
+            {% else %}
+              Không giảm
+            {% endif %}
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="3" class="text-end">
+            <strong>Giá trị giảm</strong>
+          </td>
+          <td>
+            {% if invoice.discount_type == 'percent' %}
+              {{ invoice.discount_value|floatformat:0 }}%
+            {% elif invoice.discount_type == 'amount' %}
+              {{ invoice.discount_value|floatformat:0|intcomma }} VNĐ
+            {% else %}
+              0
+            {% endif %}
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="3" class="text-end">
+            <strong>Số tiền giảm</strong>
+          </td>
+          <td>{{ invoice.discount_amount|floatformat:0|intcomma }} VNĐ</td>
+        </tr>
+
+        <tr class="table-primary">
+          <td colspan="3" class="text-end">
+            <strong>Tổng sau giảm</strong>
+          </td>
+          <td>
+            <strong>{{ invoice.final_amount|floatformat:0|intcomma }} VNĐ</strong>
+          </td>
+        </tr>
+
+        <tr>
+          <td colspan="3" class="text-end">
+            <strong>Đã thanh toán</strong>
+          </td>
+          <td>{{ invoice.paid_amount|floatformat:0|intcomma }} VNĐ</td>
+        </tr>
+
+        <tr class="table-danger">
+          <td colspan="3" class="text-end">
+            <strong>Còn nợ</strong>
+          </td>
+          <td>
+            <strong>{{ invoice.debt|floatformat:0|intcomma }} VNĐ</strong>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="d-flex gap-2 mb-3">
+      {% if not invoice.customer %}
+        <button class="btn btn-secondary" disabled style="opacity:0.5; cursor:not-allowed;">Khách lẻ - không lưu công nợ</button>
+      {% elif invoice.status != 'confirmed' %}
+        <button class="btn btn-secondary" disabled style="opacity:0.5; cursor:not-allowed;">Chưa thể thanh toán</button>
+      {% elif invoice.payment_status == 'paid' %}
+        <button class="btn btn-primary" disabled style="opacity:0.5; cursor:not-allowed;">Đã thanh toán đủ</button>
+      {% else %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sale_payment_create">Thanh toán</button>
+      {% endif %}
+    </div>
+
+    <hr />
+    <h5>Lịch sử thanh toán</h5>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Số tiền</th>
+          <th>Ghi chú</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+          <tr>
+            <td>{{ p.date }}</td>
+            <td>{{ p.amount|floatformat:0|intcomma }} VNĐ</td>
+            <td>{{ p.note }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3" class="text-center">Chưa có lịch sử thanh toán</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal fade" id="sale_payment_create" tabindex="-1" aria-labelledby="salePaymentCreateLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" action="{% url 'sale_payment_create' invoice.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="salePaymentCreateLabel">Thanh toán hóa đơn bán #{{ invoice.id }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Tổng trước giảm</label>
+              <input type="text" class="form-control" value="{{ invoice.total_amount|floatformat:0|intcomma }} VNĐ" readonly />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Giảm giá</label>
+              <input type="text" class="form-control" value="{{ invoice.discount_amount|floatformat:0|intcomma }} VNĐ" readonly />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Tổng sau giảm</label>
+              <input type="text" class="form-control" value="{{ invoice.final_amount|floatformat:0|intcomma }} VNĐ" readonly />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Đã thanh toán</label>
+              <input type="text" class="form-control" value="{{ invoice.paid_amount|floatformat:0|intcomma }} VNĐ" readonly />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Còn nợ</label>
+              <input type="text" class="form-control" value="{{ invoice.debt|floatformat:0|intcomma }} VNĐ" readonly />
+            </div>
+
+            <div class="mb-3">
+              <label for="amount" class="form-label">Số tiền thanh toán</label>
+              <input type="number" name="amount" id="amount" class="form-control" min="1" max="{{ invoice.debt }}" step="1" required />
+            </div>
+
+            <div class="mb-3">
+              <label for="note" class="form-label">Ghi chú</label>
+              <textarea name="note" id="note" class="form-control" rows="3" placeholder="Nhập ghi chú thanh toán (nếu có)"></textarea>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            <button type="submit" class="btn btn-primary">Xác nhận thanh toán</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block script_manage %}
+  <script>
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+    
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      if (elem) {
+        elem.parentNode.removeChild(elem)
+      }
+    }, 2000)
+  </script>
+{% endblock %}

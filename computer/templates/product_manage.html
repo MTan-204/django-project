@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+{% block nav_button %}          
+  
+{% endblock nav_button %}
+
+{% block manage %}          
+        <div class="container-fluid">
+          <table class="table border border-success border-3 align-middle fs-6" id="dataTable" cellspacing="0" data-order='[[ 1, "asc" ]]' data-page-length='15'>
+             <h3 class="text-center text-success fw-bold mb-3">
+              📦 Quản Lý Hàng Hóa
+            </h3>
+             <div class="d-flex gap-2">
+              <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#manageCategoryModal">
+                 Quản Lý Loại
+              </button>
+
+              <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#manageUnitModal">
+                Quản Lý Đơn Vị
+              </button>
+
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create_product">
+      Thêm Sản Phẩm
+    </button>
+              <thead>
+                <tr>
+                  <th>Ảnh</th>
+                  <th>Tên</th>
+                  <th>Hãng</th>
+                  <th>Loại</th>
+                  <th>Đơn vị</th>
+                  <th>Số lượng</th>
+                  <th>Đơn Giá</th>    
+                  <th>Trạng Thái</th> 
+                  <th>Thao Tác</th>
+                </tr>
+              </thead>                      
+          <tbody>
+            {% for p in products %}
+            <tr class="{% if p.stock <= low_stock_threshold %}table-danger{% endif %}">
+                  <td></td>
+                  <td>{{p.product.name}}</td>
+                  <td>{{p.product.brand}}</td>
+                  <td>{{p.product.category.name|default:"-"}}</td>
+                  <td>{{p.unit.name}}</td>
+                  <td>{{p.stock}}</td>
+                  <td>{{p.selling_price|intcomma}} đ</td>
+                  <td>
+                  {% if p.is_active %}
+                  <span class="badge bg-success">Đang bán</span>
+                  {% else %}
+                  <span class="badge bg-danger">Ngừng bán</span>
+                  {% endif %}
+                  </td>
+              <td>
+                {% comment %} <a href="/product/{{p.id}}/"><img src="{% static 'icons/detail.png' %}" alt="detail" width="20px" height="20px"></a> {% endcomment %}
+                <a href="{% url 'product_update' p.id %}"><img src="{% static 'icons/edit.png' %}" alt="edit" width="20px" height="20px"></a>
+                <a href="{% url 'product_delete' p.id %}" onclick="return confirm('Bạn có chắc muốn ngừng bán sản phẩm này?')"><img src="{% static 'icons/remove.png' %}" alt="remove" width="20px" height="20px"></a>
+              </td>               
+            </tr>
+            {% endfor %}
+            </tbody>
+      </table>
+                  {% if messages %}
+                  <div id="alert" class="alert alert-success fade show text-center mt-3" role="alert">
+                    {% for mes in messages %} {{mes}} {% endfor %}
+                  </div>
+                  {% endif %}
+        </div>
+
+              <!-- Modal -->
+         <div class="modal fade" id="create_product" tabindex="-1" aria-labelledby="create_productLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border border-success border-3 rounded-3">
+              <div class="modal-header bg-success text-white">
+                <h1 class="modal-title fs-6" id="create_productLabel">Thêm Sản Phẩm</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              
+              <div class="modal-body p-0">
+                <form method="post" action="">
+                  {% csrf_token %}
+                  <table class="table table-success table-hover align-middle fs-6">                     
+                    <tr>
+                        <td>Tên Sản Phẩm</td>                
+                        <td><input type="text" class="w-100" name="name"/></td>
+                    </tr>
+                    <tr>
+                        <td>Hãng</td>                
+                        <td><input type="text" class="w-100" name="brand"></td>                                    
+                    </tr>
+                    <tr>
+                      <td>Danh Mục</td>
+                      <td>
+                         <select class="w-100" name="category" id="categorySelect">
+                          {% for c in categories %}
+                          <option value="{{ c.id }}">{{ c.name }}</option>
+                          {% endfor %} 
+                          </select> 
+                      </td> 
+                    </tr>
+                    <tr>
+                      <td>Đơn vị</td>
+                      <td>
+                        <div class="d-flex gap-2">
+                       <select class="w-100" name="unit" id="unitSelect">
+                          {% for u in units %}
+                          <option value="{{ u.id }}">{{ u.name }}</option>
+                          {% endfor %} 
+                        </select> 
+                  
+                        </div>
+                      </td>  
+                    </tr>
+                     <tr>
+                        <td>Giá Bán</td>                
+                        <td><input type="text" class="w-100" name="selling_price"></td>                                    
+                    </tr>
+                </table>                     
+              </div> 
+              <!-- <div class="modal-footer"> -->
+                <div class="d-flex justify-content-end align-items-center gap-2 pb-2 pe-2">
+                  <button type="submit" class="btn btn-success">Thêm mới</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+              </div>
+              <!-- </div> -->
+              </form>
+            </div>
+          </div>
+        </div> 
+        
+        
+<div class="modal fade" id="manageCategoryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border border-success border-3">
+
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Quản Lý Loại Sản Phẩm</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Thêm danh mục -->
+        <div class="input-group mb-3">
+          <input type="text" id="categoryName" class="form-control" placeholder="Tên Loại Sản Phẩm">
+          <button class="btn btn-success" onclick="addCategory()">Thêm</button>
+        </div>
+
+        <!-- Bảng danh mục -->
+        <table class="table table-bordered border-success align-middle text-center">
+          <thead class="table-success">
+            <tr>
+              <th>ID</th>
+              <th>Tên Loại Sản Phẩm</th>
+              <th>Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in categories %}
+            <tr>
+              <td>{{c.id}}</td>
+              <td>{{c.name}}</td>
+              <td>
+                <a href="/category/delete/{{c.id}}/" 
+                   onclick="return confirm('Bạn có chắc muốn xóa danh mục này?')">
+                  <img src="{% static 'icons/remove.png' %}" width="20">
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="manageUnitModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border border-success border-3">
+
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Quản Lý Đơn Vị</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Thêm -->
+        <div class="input-group mb-3">
+          <input type="text" id="unitName" class="form-control" placeholder="Tên Đơn Vị Sản Phẩm">
+          <button class="btn btn-success" onclick="addUnit()">Thêm</button>
+        </div>
+
+        <!-- Bảng -->
+        <table class="table table-bordered border-success align-middle text-center">
+          <thead class="table-success">
+            <tr>
+              <th>ID</th>
+              <th>Đơn Vị</th>
+              <th>Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in units %}
+            <tr>
+              <td>{{u.id}}</td>
+              <td>{{u.name}}</td>
+              <td>
+                <a href="/unit/delete/{{u.id}}/" 
+                   onclick="return confirm('Bạn có chắc muốn xóa đơn vị này?')">
+                  <img src="{% static 'icons/remove.png' %}" width="20">
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+{% endblock manage %}
+{% block script_manage %}
+<script>
+  $(document).ready(function() {
+  $('#dataTable').DataTable( {      
+    buttons: ['copy', 'excel', 'pdf','print'],
+    layout: {topStart: 'buttons'},
+    paging: true,
+    select: true,    
+    ordering:  true,   
+    responsive: true
+  } );
+} );
+
+function dark_mode(){
+  var element = document.body;
+  element.dataset.bsTheme = element.dataset.bsTheme == "light" ? "dark" : "light";
+}
+setTimeout(() => {
+    const elem = document.getElementById("alert");
+    elem.parentNode.removeChild(elem);}, 2000);    
+    
+    
+function addCategory(){
+    let name = document.getElementById("categoryName").value;
+    if(name === ""){
+        alert("Vui lòng nhập tên danh mục");
+        return;
+    }
+    fetch("/category/add/",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "X-CSRFToken":"{{ csrf_token }}"
+        },
+        body:JSON.stringify({
+            name:name
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        location.reload();
+    })
+}
+
+
+function addUnit(){
+    let name = document.getElementById("unitName").value;
+    if(name === ""){
+        alert("Vui lòng nhập tên loại sản phẩm");
+        return;
+    }
+    fetch("/unit/add/",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "X-CSRFToken":"{{ csrf_token }}"
+        },
+        body:JSON.stringify({
+            name:name
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        location.reload();
+    })
+}
+</script>
+
+
+
+
+{% endblock script_manage %}
+

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+
+{% endblock %}
+
+{% block manage %}
+<div class="container mt-4">
+  <h3 class="mb-4">Công Nợ Khách Hàng</h3>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="alert alert-primary mb-0">
+        <strong>Tổng tiền bán:</strong> {{ total_purchase|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-success mb-0">
+        <strong>Tổng đã thu:</strong> {{ total_paid|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-danger mb-0">
+        <strong>Tổng nợ khách hàng:</strong> {{ total_debt|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+  </div>
+
+  <table class="table table-bordered table-striped" id="dataTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tên khách hàng</th>
+        <th>Số điện thoại</th>
+        <th>Địa chỉ</th>
+        <th>Số hóa đơn</th>
+        <th>Tổng đã mua</th>
+        <th>Đã trả</th>
+        <th>Còn nợ</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customer_debts %}
+      <tr>
+        <td>{{ c.customer_id }}</td>
+        <td>{{ c.customer__name }}</td>
+        <td>{{ c.customer__phone }}</td>
+        <td>{{ c.customer__address }}</td>
+        <td>{{ c.invoice_count }}</td>
+        <td>{{ c.total_purchase|floatformat:0|intcomma }} VNĐ</td>
+        <td>{{ c.total_paid|floatformat:0|intcomma }} VNĐ</td>
+        <td>
+          {% if c.total_debt > 0 %}
+            <span class="badge bg-danger">{{ c.total_debt|floatformat:0|intcomma }} VNĐ</span>
+          {% else %}
+            <span class="badge bg-success">0 VNĐ</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'customer_debt_detail' c.customer_id %}" class="btn btn-info btn-sm">Chi tiết</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9" class="text-center">Chưa có dữ liệu công nợ khách hàng</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  $(document).ready(function () {
+    $('#dataTable').DataTable({
+      buttons: ['copy', 'excel', 'pdf', 'print'],
+      layout: { topStart: 'buttons' },
+      paging: true,
+      ordering: true,
+      responsive: true
+    })
+  })
+
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+</script>
+{% endblock %}

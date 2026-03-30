@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+{% endblock %}
+
+{% block manage %}
+<div class="container mt-4">
+  <h3 class="mb-3">Chi Tiết Công Nợ - {{ customer.name }}</h3>
+
+  <p><strong>Số điện thoại:</strong> {{ customer.phone }}</p>
+  <p><strong>Địa chỉ:</strong> {{ customer.address }}</p>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="alert alert-primary mb-0">
+        <strong>Tổng đã mua:</strong> {{ total_purchase|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-success mb-0">
+        <strong>Đã trả:</strong> {{ total_paid|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-danger mb-0">
+        <strong>Còn nợ:</strong> {{ total_debt|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+  </div>
+
+  <table class="table table-bordered table-striped" id="dataTable">
+    <thead>
+      <tr>
+        <th>ID Hóa đơn</th>
+        <th>Ngày lập</th>
+        <th>Tổng tiền</th>
+        <th>Đã trả</th>
+        <th>Còn nợ</th>
+        <th>Trạng thái thanh toán</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in invoices %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td>{{ r.created_at }}</td>
+        <td>{{ r.total_amount|floatformat:0|intcomma }} VNĐ</td>
+        <td>{{ r.paid_amount|floatformat:0|intcomma }} VNĐ</td>
+        <td>{{ r.debt|floatformat:0|intcomma }} VNĐ</td>
+        <td>
+          {% if r.payment_status == 'unpaid' %}
+            <span class="badge bg-danger">Chưa thanh toán</span>
+          {% elif r.payment_status == 'partial' %}
+            <span class="badge bg-warning text-dark">Thanh toán một phần</span>
+          {% elif r.payment_status == 'paid' %}
+            <span class="badge bg-success">Đã thanh toán</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'sale_invoice_detail' r.id %}" class="btn btn-info btn-sm">Chi tiết</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="text-center">Khách hàng này chưa có hóa đơn bán</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  $(document).ready(function () {
+    $('#dataTable').DataTable({
+      buttons: ['copy', 'excel', 'pdf', 'print'],
+      layout: { topStart: 'buttons' },
+      paging: true,
+      ordering: true,
+      responsive: true
+    })
+  })
+
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+</script>
+{% endblock %}

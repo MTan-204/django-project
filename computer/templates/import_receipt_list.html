@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+{% block nav_button %}
+
+{% endblock %}
+
+{% block manage %}
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <div class="alert alert-primary mb-0">
+        <strong>Tổng tiền nhập:</strong> {{ total_import|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-success mb-0">
+        <strong>Tổng đã thanh toán:</strong> {{ total_paid|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="alert alert-danger mb-0">
+        <strong>Tổng nợ hiện tại:</strong> {{ total_debt|floatformat:0|intcomma }} VNĐ
+      </div>
+    </div>
+  </div>
+  <div class="container mt-4">
+    <h4>Danh sách phiếu nhập</h4>
+
+    <a href="{% url 'import_receipt_create' %}" class="btn btn-primary mb-3">Tạo phiếu nhập</a>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nhà cung cấp</th>
+          <th>Ngày tạo</th>
+          <th>Người tạo</th>
+          <th>Tổng tiền</th>
+          <th>Đã thanh toán</th>
+          <th>Còn nợ</th>
+          <th>Trạng thái</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for r in receipts %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.supplier }}</td>
+            <td>{{ r.created_at }}</td>
+            <td>
+              {% if r.created_by %}
+                {% if r.created_by.last_name or r.created_by.first_name %}
+                  {{ r.created_by.last_name }} {{ r.created_by.first_name }}
+                {% else %}
+                  {{ r.created_by.username }}
+                {% endif %}
+              {% else %}
+                ---
+              {% endif %}
+            </td>
+            <td>{{ r.total_amount|floatformat:0|intcomma }}</td>
+            <td>{{ r.paid_amount|floatformat:0|intcomma }}</td>
+            <td class="fw-bold text-danger">{{ r.debt|floatformat:0|intcomma }}</td>
+            <td>
+              {% if r.status == 'draft' %}
+                <span class="badge bg-warning">Nháp</span>
+              {% else %}
+                <span class="badge bg-success">Đã xác nhận</span>
+              {% endif %}
+
+              {% if r.payment_status == 'unpaid' %}
+                <span class="badge bg-danger">Chưa thanh toán</span>
+              {% elif r.payment_status == 'partial' %}
+                <span class="badge bg-warning">Thanh toán một phần</span>
+              {% else %}
+                <span class="badge bg-success">Đã thanh toán</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if r.status == 'draft' %}
+                <a href="{% url 'confirm_receipt' r.id %}" onclick="return confirm('Bạn có chắc muốn xác nhận phiếu này không ?')"><img src="{% static 'icons/right.png' %}" alt="detail" width="20px" height="20px" /></a>
+                <a href="{% url 'delete_import_receipt' r.id %}" onclick="return confirm('Bạn có chắc muốn xóa phiếu này không ?')"><img src="{% static 'icons/remove.png' %}" alt="detail" width="20px" height="20px" /></a>
+              {% endif %}
+              <a href="{% url 'import_receipt_detail' r.id %}"><img src="{% static 'icons/detail.png' %}" alt="detail" width="20px" height="20px" /></a>
+              <a href="{% url 'import_receipt_print' r.id %}"><img src="{% static 'icons/vga.png' %}" alt="detail" width="20px" height="20px" /></a>
+              {% comment %} <a href="{% url 'payment_create' r.id %}" class="btn btn-warning btn-sm">Payment</a> {% endcomment %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+
+{% block script_manage %}
+  <script>
+    /* =============================
+                           DataTable
+                        ============================= */
+    $(document).ready(function () {
+      $('#dataTable').DataTable({
+        buttons: ['copy', 'excel', 'pdf', 'print'],
+        layout: { topStart: 'buttons' },
+        paging: true,
+        select: true,
+        ordering: true,
+        responsive: true
+      })
+    })
+    
+    $(document).ready(function () {
+      $('#receiptTable').DataTable()
+    })
+    
+    /* =============================
+                           Dark mode
+                        ============================= */
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+    
+    /* =============================
+                           Auto remove alert
+                        ============================= */
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      elem.parentNode.removeChild(elem)
+    }, 2000)
+  </script>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+{% block nav_button %}
+  
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h4>Phiếu nhập #{{ receipt.id }}</h4>
+
+    <p>Nhà cung cấp: {{ receipt.supplier.name }}</p>
+    <p>Ngày: {{ receipt.created_at }}</p>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th>Số lượng</th>
+          <th>Giá</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for d in details %}
+          <tr>
+            <td>{{ d.product_variant.product.name }}</td>
+            <td>{{ d.quantity }}</td>
+            <td>{{ d.price |floatformat:0|intcomma}}</td>
+            <td>{{ d.subtotal |floatformat:0|intcomma }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h5>Tổng tiền: {{ receipt.total_amount |floatformat:0|intcomma }}</h5>
+    <p class="text-danger fw-bold">Còn nợ:{{ receipt.debt |floatformat:0|intcomma }}</p>
+    {% if receipt.payment_status == 'paid' %}
+      <button class="btn btn-primary" disabled style="opacity:0.5; cursor:not-allowed;">Thanh toán</button>
+    {% elif receipt.status != 'confirmed' %}
+      <button class="btn btn-secondary" disabled style="opacity:0.5; cursor:not-allowed;">Chưa thể thanh toán</button>
+    {% else %}
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#payment_create">Thanh toán</button>
+    {% endif %}
+    <hr />
+    <h5>Thanh toán</h5>
+
+    <table class="table">
+      <tr>
+        <th>Ngày</th>
+        <th>Số tiền</th>
+        <th>Ghi chú</th>
+      </tr>
+
+      {% for p in payments %}
+        <tr>
+          <td>{{ p.date }}</td>
+          <td>{{ p.amount |floatformat:0|intcomma }}</td>
+          <td>{{ p.note |floatformat:0|intcomma }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  
+
+<div class="modal fade" id="payment_create" tabindex="-1" aria-labelledby="paymentCreateLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'payment_create' receipt.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="paymentCreateLabel">Thanh toán phiếu nhập #{{ receipt.id }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tổng tiền</label>
+            <input type="text" class="form-control" value="{{ receipt.total_amount|floatformat:0|intcomma }}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Đã thanh toán</label>
+            <input type="text" class="form-control" value="{{ receipt.paid_amount |floatformat:0|intcomma}}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Còn nợ</label>
+            <input type="text" class="form-control" value="{{ receipt.debt |floatformat:0|intcomma}}" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label for="amount" class="form-label">Số tiền thanh toán</label>
+            <input
+              type="number"
+              name="amount"
+              id="amount"
+              class="form-control"
+              min="0.01"
+              max="{{ receipt.debt }}"
+              step="0.01"
+              required
+            >
+          </div>
+
+          <div class="mb-3">
+            <label for="note" class="form-label">Ghi chú</label>
+            <textarea name="note" id="note" class="form-control" rows="3" placeholder="Nhập ghi chú thanh toán" required></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Xác nhận thanh toán</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script_manage %}
+  <script>
+    $(document).ready(function () {
+      $('#dataTable').DataTable({
+        buttons: ['copy', 'excel', 'pdf', 'print'],
+        layout: { topStart: 'buttons' },
+        paging: true,
+        select: true,
+        ordering: true,
+        responsive: true
+      })
+    })
+    
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      elem.parentNode.removeChild(elem)
+    }, 2000)
+    
+    function updateTotals() {
+      let total = 0
+    
+      document.querySelectorAll('#formset-body tr').forEach(function (row) {
+        let qty = row.querySelector("input[name$='quantity']")
+        let price = row.querySelector("input[name$='price']")
+        let subtotalCell = row.querySelector('.subtotal')
+    
+        let quantity = parseFloat(qty?.value || 0)
+        let priceValue = parseFloat(price?.value || 0)
+    
+        let subtotal = quantity * priceValue
+    
+        subtotalCell.innerText = subtotal
+    
+        total += subtotal
+      })
+    
+      document.getElementById('total-amount').innerText = total
+    }
+    
+    document.addEventListener('input', function (e) {
+      if (e.target.name.includes('quantity') || e.target.name.includes('price')) {
+        updateTotals()
+      }
+    })
+    
+    document.getElementById('add-row').addEventListener('click', function () {
+      let tableBody = document.getElementById('formset-body')
+    
+      let totalFormsInput = document.querySelector("input[name$='TOTAL_FORMS']")
+      let formCount = parseInt(totalFormsInput.value)
+    
+      let rows = document.querySelectorAll('#formset-body tr')
+      let lastRow = rows[rows.length - 1]
+    
+      let newRow = lastRow.cloneNode(true)
+    
+      newRow.querySelectorAll('input, select').forEach(function (el) {
+        if (el.name) {
+          let newName = el.name.replace(/-\d+-/, `-${formCount}-`)
+          let newId = 'id_' + newName
+    
+          el.name = newName
+          el.id = newId
+          el.value = ''
+        }
+      })
+    
+      newRow.querySelector('.subtotal').innerText = '0'
+    
+      tableBody.appendChild(newRow)
+    
+      totalFormsInput.value = formCount + 1
+    })
+    document.addEventListener('change', function (e) {
+      if (e.target.name.includes('product_variant')) {
+        let productId = e.target.value
+    
+        let row = e.target.closest('tr')
+    
+        fetch(`/get-stock/?product_id=${productId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            row.querySelector('.stock').innerText = data.stock
+          })
+      }
+    })
+  </script>
+{% endblock %}

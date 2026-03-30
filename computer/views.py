@@ -1,89 +1,1537 @@
-from django.shortcuts import render, redirect
-from .models import Computer_TXTS
+from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import ValidationError
+from django.db.models.functions import Coalesce,TruncDate, TruncMonth
+from django.utils import timezone
+from django.urls import reverse
+from .models import Product, ProductVariant, Category, Unit, Supplier, ImportReceiptDetail, ImportReceipt, Payment, Customer, SaleInvoice, SalePayment,SaleInvoiceDetail, UserProfile
+from .forms import ImportReceiptForm, ImportReceiptDetailFormSet, SaleInvoiceForm, SaleInvoiceDetailFormSet
+from decimal import Decimal, InvalidOperation
+from django.db.models import Sum, F,ExpressionWrapper, DecimalField, Value, Count, Q
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.decorators import login_required, login_not_required
 from django.contrib.auth import logout
-
-@login_not_required
-def index(request):    
-    computer = Computer_TXTS.objects.all()        
-    return render(request, 'computer_index.html',{'computer': computer})
-
-@login_required
-def computer_manage(request):
-    computer = Computer_TXTS.objects.all()    
-
-    if request.method == 'POST':
-        pcname = request.POST['pcname']
-        username = request.POST['username']
-        userid = request.POST['userid']
-        name = request.POST['name']
-        phone = request.POST['phone']
-        cd = request.POST['cd']
-        job = request.POST['job']
-        department = request.POST['department']
-        buy = request.POST['buy']
-        mainboard = request.POST['mainboard']
-        cpu = request.POST['cpu']
-        ram = request.POST['ram']
-        disk = request.POST['disk']
-        vga = request.POST['vga']
-        monitor = request.POST['monitor']
-        note = request.POST['note']
-
-
-        computer = Computer_TXTS(pcname=pcname,username=username,userid=userid,name=name,phone=phone,cd=cd,job=job,department=department,buy=buy,mainboard=mainboard,cpu=cpu,ram=ram,disk=disk,vga=vga,monitor=monitor,note=note)
-        computer.save()
-        messages.success(request,'Máy tính đã được thêm thành công!')
-        return redirect('/computer/manage')
-    
-    return render(request, 'computer_manage.html',{'computer': computer})
-
-@login_required
-def computer_update(request, pcname):
-    computer = Computer_TXTS.objects.get(pcname=pcname)
-    if request.method == 'POST':
-        pcname = request.POST['pcname']
-        computer.username = request.POST['username']
-        computer.userid = request.POST['userid']
-        computer.name = request.POST['name']
-        computer.phone = request.POST['phone']
-        computer.cd = request.POST['cd']
-        computer.job = request.POST['job']
-        computer.department = request.POST['department']
-        computer.buy = request.POST['buy']
-        computer.mainboard = request.POST['mainboard']
-        computer.cpu = request.POST['cpu']
-        computer.ram = request.POST['ram']
-        computer.disk = request.POST['disk']
-        computer.vga = request.POST['vga']
-        computer.monitor = request.POST['monitor']
-        computer.note = request.POST['note']       
-        computer.save()
-
-        messages.success(request,'Cập nhật thành công!')
-
-        return redirect('/computer/manage')     
-    return render(request, 'computer_update.html',{
-        'computer': computer
-    })
-
-@login_required
-def computer_delete(request, pcname):
-    computer = Computer_TXTS.objects.get(pcname=pcname)
-    computer.delete()
-    messages.success(request,'Xóa máy tính thành công!')
-    return redirect('/computer/manage')
-
-@login_not_required
-def computer_view(request, pcname):
-    computer = Computer_TXTS.objects.get(pcname=pcname)
-    return render(request, 'computer_view.html',{
-        'computer': computer
-    })
+import json
+from django.http import JsonResponse
+from django.db import transaction
+from django.core.exceptions import ValidationError
+from functools import wraps
+from django.contrib.auth.models import User
 class SiteLoginView(LoginView):
      template_name = 'login.html'
 def logout_view(request):
     logout(request)
-    return redirect('/computer')
+    return redirect('product_list')
+
+@login_not_required
+def product_list(request):
+    products = ProductVariant.objects.select_related(
+        'product','product__category').order_by('product__name')
+    categories = Category.objects.all()
+    units = Unit.objects.all()
+    context = {
+        'products': products,
+        'categories': categories,
+        'units': units
+    }
+    return render(request, 'product_list.html', context)
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+
+        if not request.user.is_superuser:
+            messages.error(request, "Bạn không có quyền truy cập chức năng này.")
+            return redirect('pos')
+
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
+@admin_required
+def product_manage(request):
+    low_stock_threshold = 10
+    stock_filter = request.GET.get('stock')
+
+    products = ProductVariant.objects.select_related(
+        'product', 'product__category', 'unit'
+    )
+
+    if stock_filter == 'low':
+        products = products.filter(stock__lte=low_stock_threshold)
+
+    categories = Category.objects.all()
+    units = Unit.objects.all()
+
+    low_stock_count = ProductVariant.objects.filter(
+        stock__lte=low_stock_threshold
+    ).count()
+
+    if request.method == 'POST':
+        name = request.POST['name']
+        brand = request.POST['brand']
+        category = request.POST['category']
+        unit_id = request.POST['unit']
+        selling_price = request.POST['selling_price']
+
+        product = Product.objects.create(
+            name=name,
+            category_id=category,
+            brand=brand
+        )
+
+        ProductVariant.objects.create(
+            product=product,
+            selling_price=selling_price,
+            unit_id=unit_id,
+            stock=0
+        )
+
+        messages.success(request, 'Thêm sản phẩm thành công!')
+        return redirect('/product/manage')
+
+    return render(request, 'product_manage.html', {
+        'products': products,
+        'categories': categories,
+        'units': units,
+        'low_stock_threshold': low_stock_threshold,
+        'low_stock_count': low_stock_count,
+        'stock_filter': stock_filter,
+    })
+
+def product_update(request, id):
+    variant = get_object_or_404(ProductVariant, id=id)
+    if request.method == "POST":
+
+        variant.product.name = request.POST.get("name")
+        variant.product.brand = request.POST.get("brand")
+        variant.product.category_id = request.POST.get("category")
+
+        variant.unit_id = request.POST.get("unit")
+        variant.stock = request.POST.get("stock")
+        variant.selling_price = request.POST.get("price")
+        variant.is_active = not variant.is_active
+        variant.product.save()
+        variant.save()
+
+        messages.success(request,"Cập nhật thành công")
+        return redirect("/product/manage")
+
+    categories = Category.objects.all()
+    units = Unit.objects.all()
+
+    return render(request,"product_update.html",{
+        "products": variant,
+        "categories": categories,
+        "units": units
+    })
+
+def product_delete(request,id):
+    variant = get_object_or_404(ProductVariant, id=id)
+    variant.is_active = False
+    variant.save()
+    messages.success(request,'Đã ngừng bán sản phẩm!')
+    return redirect('/product/manage')
+
+
+def add_category(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        name = data.get("name")
+
+        if name:
+            Category.objects.create(name=name)
+            return JsonResponse({"status": "ok"})
+
+def delete_category(request, id):
+
+    category = get_object_or_404(Category, id=id)
+    # kiểm tra sản phẩm có dùng category này không
+    if Product.objects.filter(category=category).exists():
+        messages.error(request, "Không thể xóa danh mục vì đang có sản phẩm sử dụng.")
+        return redirect('/product/manage')
+
+    category.delete()
+
+    return redirect('/product/manage')
+
+def add_unit(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        name = data.get("name")
+
+        if name:
+            Unit.objects.create(name=name)
+            return JsonResponse({"status": "ok"})
+
+def delete_unit(request, id):
+    unit = get_object_or_404(Unit, id=id)
+    if ProductVariant.objects.filter(unit=unit).exists():
+        messages.error(request, "Không thể xóa  vì đang có sản phẩm sử dụng.")
+        return redirect('/product/manage')
+    unit.delete()
+    return redirect('/product/manage')
+
+def supplier_manage(request):
+    suppliers = Supplier.objects.all()
+    if request.method == "POST":
+        name = request.POST['name']
+        phone = request.POST['phone']
+        address = request.POST['address']
+        Supplier.objects.create(
+        name = name,
+        phone = phone,
+        address = address,
+    )
+        messages.success(request,'Thêm nhà cung cấp thành công!')
+        
+    return render(request,'supplier.html',{
+        'suppliers': suppliers
+    })
+
+def delete_supplier(request,id):
+    supplier = get_object_or_404(Supplier,id=id)
+    supplier.is_active = False
+    supplier.save()
+    messages.success(request,"Nhà cung cấp đã ngừng hoạt động")
+    return redirect('/supplier/')
+
+def update_supplier(request, id):
+    supplier = Supplier.objects.get(id=id)
+
+    if request.method == "POST":
+        supplier.name = request.POST['name']
+        supplier.phone = request.POST['phone']
+        supplier.address = request.POST['address']
+        supplier.is_active = not supplier.is_active
+        supplier.save()
+
+        messages.success(request, "Cập nhật nhà cung cấp thành công!")
+        return redirect('supplier')
+
+    return render(request, 'supplier_update.html', {
+        'supplier': supplier
+    })
+
+def import_receipt_create(request):
+
+    if request.method == 'POST':
+        form = ImportReceiptForm(request.POST)
+        formset = ImportReceiptDetailFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            receipt = form.save(commit=False)
+            receipt.created_by = request.user
+            receipt.save()
+
+            details = formset.save(commit=False)
+
+            for d in details:
+                d.receipt = receipt
+                d.save()
+
+            receipt.recalc_total()
+
+            messages.success(request, "Tạo phiếu nhập thành công")
+
+            return redirect('import_receipt_list')
+
+    else:
+        form = ImportReceiptForm()
+        formset = ImportReceiptDetailFormSet()
+
+    return render(request, 'import_receipt_create.html', {
+        'form': form,
+        'formset': formset
+    })
+
+def import_receipt_print(request, pk):
+    receipt = get_object_or_404(
+        ImportReceipt.objects.select_related('supplier','created_by'),
+        pk=pk
+    )
+    details = ImportReceiptDetail.objects.select_related(
+        'product_variant',
+        'product_variant__product',
+        'product_variant__unit'
+    ).filter(receipt=receipt)
+
+    payments = receipt.payments.all()
+
+    return render(request, 'import_receipt_print.html', {
+        'receipt': receipt,
+        'details': details,
+        'payments': payments
+    })
+def import_receipt_list(request):
+    receipts = ImportReceipt.objects.select_related('supplier').all().order_by('-id')
+
+    summary = receipts.aggregate(
+        total_import=Coalesce(
+        Sum('total_amount'),
+        Value(Decimal('0.00')),
+        output_field=DecimalField(max_digits=12, decimal_places=2)
+),
+        total_paid=Coalesce(
+        Sum('paid_amount'),
+        Value(Decimal('0.00')),
+        output_field=DecimalField(max_digits=12, decimal_places=2)
+),
+        total_debt=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F('total_amount') - F('paid_amount'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                )
+            ),
+            Value(Decimal('0.00')),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        )
+    )
+
+    return render(request, 'import_receipt_list.html', {
+        'receipts': receipts,
+        'total_import': summary['total_import'],
+        'total_paid': summary['total_paid'],
+        'total_debt': summary['total_debt'],
+    })
+
+def import_receipt_detail(request, pk):
+
+    receipt = ImportReceipt.objects.get(pk=pk)
+
+    details = receipt.details.select_related("product_variant__product")
+
+    payments = receipt.payments.all()
+
+    return render(request,"import_receipt_detail.html",{
+        "receipt":receipt,
+        "details":details,
+        "payments":payments
+    })
+
+def delete_import_receipt(request, pk):
+    receipt = get_object_or_404(ImportReceipt, pk=pk)
+
+    if receipt.status != 'draft':
+        messages.error(request, "Chỉ được xóa phiếu nhập ở trạng thái nháp.")
+        return redirect('import_receipt_list')
+
+    if receipt.payments.exists():
+        messages.error(request, "Không thể xóa phiếu nhập đã phát sinh thanh toán.")
+        return redirect('import_receipt_list')
+
+    receipt.delete()
+    messages.success(request, f"Đã xóa phiếu nhập #{pk} thành công.")
+    return redirect('import_receipt_list')
+
+def get_product_stock(request):
+
+    product_id = request.GET.get('product_id')
+
+    product = ProductVariant.objects.get(id=product_id)
+
+    return JsonResponse({
+        'stock': product.stock
+    })
+
+def confirm_receipt(request, pk):
+
+    receipt = get_object_or_404(ImportReceipt, pk=pk)
+
+    try:
+        receipt.confirm()
+        messages.success(request, "Xác nhận phiếu nhập thành công")
+    except Exception as e:
+        messages.error(request, str(e))
+
+    return redirect('import_receipt_detail', pk=pk)
+
+def payment_create(request, receipt_id):
+    receipt = get_object_or_404(ImportReceipt, pk=receipt_id)
+
+    if request.method == "POST":
+        amount_raw = request.POST.get("amount", "").strip()
+        note = request.POST.get("note", "").strip()
+
+        try:
+            amount = Decimal(amount_raw)
+
+            if amount <= 0:
+                messages.error(request, "Số tiền thanh toán phải lớn hơn 0.")
+                return redirect("import_receipt_detail", pk=receipt_id)
+
+            Payment.objects.create(
+                receipt=receipt,
+                amount=amount,
+                note=note
+            )
+
+            messages.success(request, "Thanh toán thành công.")
+
+        except InvalidOperation:
+            messages.error(request, "Số tiền không hợp lệ.")
+        except ValidationError as e:
+            if hasattr(e, "messages") and e.messages:
+                messages.error(request, e.messages[0])
+            else:
+                messages.error(request, "Dữ liệu thanh toán không hợp lệ.")
+        except Exception as e:
+            messages.error(request, f"Có lỗi xảy ra: {str(e)}")
+
+    return redirect("import_receipt_detail", pk=receipt_id)
+
+def supplier_debt(request):
+
+    suppliers = Supplier.objects.annotate(
+        total_import=Sum('receipts__total_amount'),
+        total_paid=Sum('receipts__paid_amount'),
+    )
+
+    for s in suppliers:
+        s.total_import = s.total_import or 0
+        s.total_paid = s.total_paid or 0
+        s.debt = s.total_import - s.total_paid
+
+    return render(request, 'supplier_debt.html', {
+        'suppliers': suppliers
+    })
+
+def sale_invoice_list(request):
+    invoices = SaleInvoice.objects.select_related('customer').all().order_by('-id')
+    return render(request, 'sale_invoice_list.html', {
+        'invoices': invoices
+    })
+
+def sale_invoice_print(request, pk):
+    invoice = get_object_or_404(
+        SaleInvoice.objects.select_related('customer','created_by'),
+        pk=pk
+    )
+    details = invoice.details.select_related(
+        'product_variant',
+        'product_variant__product',
+        'product_variant__unit'
+    ).all()
+    payments = invoice.payments.all()
+
+    return render(request, 'sale_invoice_print.html', {
+        'invoice': invoice,
+        'details': details,
+        'payments': payments
+    })
+
+def sale_invoice_create(request):
+    if request.method == 'POST':
+        form = SaleInvoiceForm(request.POST)
+        formset = SaleInvoiceDetailFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            invoice = form.save(commit=False)
+            invoice.total_amount = 0
+            invoice.created_by= request.user
+            invoice.discount_amount = 0
+            invoice.final_amount = 0
+            invoice.status = 'draft'
+            invoice.save()
+
+            details = formset.save(commit=False)
+
+            has_detail = False
+            for d in details:
+                if d.product_variant and d.quantity and d.price:
+                    d.invoice = invoice
+                    d.save()
+                    has_detail = True
+
+            for obj in formset.deleted_objects:
+                if obj.pk:
+                    obj.delete()
+
+            if not has_detail:
+                invoice.delete()
+                messages.error(request, "Hóa đơn bán phải có ít nhất 1 sản phẩm.")
+                return render(request, 'sale_invoice_create.html', {
+                    'form': form,
+                    'formset': formset
+                })
+
+            invoice.recalc_total()
+
+            messages.success(request, "Tạo hóa đơn bán thành công.")
+            return redirect('sale_invoice_list')
+
+        messages.error(request, "Vui lòng kiểm tra lại dữ liệu hóa đơn bán.")
+    else:
+        form = SaleInvoiceForm()
+        formset = SaleInvoiceDetailFormSet()
+
+    return render(request, 'sale_invoice_create.html', {
+        'form': form,
+        'formset': formset
+    })
+
+def sale_invoice_detail(request, pk):
+    invoice = get_object_or_404(
+        SaleInvoice.objects.select_related('customer','created_by'),
+        pk=pk
+    )
+    details = invoice.details.select_related('product_variant', 'product_variant__product','product_variant__unit').all()
+    payments = invoice.payments.all()
+
+    return render(request, 'sale_invoice_detail.html', {
+        'invoice': invoice,
+        'details': details,
+        'payments': payments
+    })
+
+
+def confirm_sale_invoice(request, pk):
+    invoice = get_object_or_404(SaleInvoice, pk=pk)
+
+    try:
+        invoice.confirm()
+        messages.success(request, f"Đã xác nhận hóa đơn bán #{pk} và cập nhật tồn kho thành công.")
+    except ValidationError as e:
+        if hasattr(e, 'messages') and e.messages:
+            messages.error(request, e.messages[0])
+        else:
+            messages.error(request, "Không thể xác nhận hóa đơn bán.")
+    except Exception as e:
+        messages.error(request, f"Có lỗi xảy ra: {str(e)}")
+
+    return redirect('sale_invoice_list')
+
+def customer_list(request):
+    customers = Customer.objects.all().order_by('name')
+    return render(request, 'customer_list.html', {
+        'customers': customers
+    })
+
+def delete_sale_invoice(request, pk):
+    invoice = get_object_or_404(SaleInvoice, pk=pk)
+
+    if invoice.status != 'draft':
+        messages.error(request, "Chỉ được xóa hóa đơn bán ở trạng thái nháp.")
+        return redirect('sale_invoice_list')
+
+    invoice.delete()
+    messages.success(request, f"Đã xóa hóa đơn bán #{pk} thành công.")
+    return redirect('sale_invoice_list')
+
+def sale_invoice_update(request, pk):
+    invoice = get_object_or_404(SaleInvoice, pk=pk)
+
+    if invoice.status != 'draft':
+        messages.error(request, "Chỉ được sửa hóa đơn bán ở trạng thái nháp.")
+        return redirect('sale_invoice_list')
+
+    if request.method == 'POST':
+        form = SaleInvoiceForm(request.POST, instance=invoice)
+        formset = SaleInvoiceDetailFormSet(request.POST, instance=invoice)
+
+        if form.is_valid() and formset.is_valid():
+            invoice = form.save(commit=False)
+            invoice.save()
+
+            details = formset.save(commit=False)
+
+            for d in details:
+                if d.product_variant and d.quantity and d.price:
+                    d.invoice = invoice
+                    d.save()
+
+            for obj in formset.deleted_objects:
+                if obj.pk:
+                    obj.delete()
+
+            if not invoice.details.exists():
+                messages.error(request, "Hóa đơn bán phải có ít nhất 1 sản phẩm.")
+                return render(request, 'sale_invoice_update.html', {
+                    'form': form,
+                    'formset': formset,
+                    'invoice': invoice
+                })
+
+            invoice.recalc_total()
+
+            messages.success(request, f"Cập nhật hóa đơn bán #{pk} thành công.")
+            return redirect('sale_invoice_list')
+
+        messages.error(request, "Vui lòng kiểm tra lại dữ liệu hóa đơn bán.")
+    else:
+        form = SaleInvoiceForm(instance=invoice)
+        formset = SaleInvoiceDetailFormSet(instance=invoice)
+
+    return render(request, 'sale_invoice_update.html', {
+        'form': form,
+        'formset': formset,
+        'invoice': invoice
+    })
+
+def sale_payment_create(request, invoice_id):
+    invoice = get_object_or_404(SaleInvoice, pk=invoice_id)
+
+    if request.method == "POST":
+        amount_raw = request.POST.get("amount", "").strip()
+        note = request.POST.get("note", "").strip()
+
+        try:
+            amount = Decimal(amount_raw)
+
+            if invoice.status != 'confirmed':
+                messages.error(request, "Chỉ thanh toán khi hóa đơn đã xác nhận.")
+                return redirect('sale_invoice_detail', pk=invoice_id)
+
+            if not invoice.customer_id:
+                messages.error(request, "Hóa đơn khách lẻ không cần thanh toán công nợ.")
+                return redirect('sale_invoice_detail', pk=invoice_id)
+
+            if invoice.payment_status == 'paid':
+                messages.error(request, "Hóa đơn này đã thanh toán đủ.")
+                return redirect('sale_invoice_detail', pk=invoice_id)
+
+            if amount <= 0:
+                messages.error(request, "Số tiền thanh toán phải lớn hơn 0.")
+                return redirect('sale_invoice_detail', pk=invoice_id)
+
+            SalePayment.objects.create(
+                invoice=invoice,
+                amount=amount,
+                note=note
+            )
+
+            messages.success(request, "Thanh toán hóa đơn bán thành công.")
+
+        except InvalidOperation:
+            messages.error(request, "Số tiền không hợp lệ.")
+        except ValidationError as e:
+            if hasattr(e, "messages") and e.messages:
+                messages.error(request, e.messages[0])
+            else:
+                messages.error(request, "Dữ liệu thanh toán không hợp lệ.")
+        except Exception as e:
+            messages.error(request, f"Có lỗi xảy ra: {str(e)}")
+
+    return redirect('sale_invoice_detail', pk=invoice_id)
+
+def customer_create(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        address = request.POST.get('address', '').strip()
+
+        if not name:
+            messages.error(request, "Tên khách hàng không được để trống.")
+            return redirect('customer_create')
+
+        Customer.objects.create(
+            name=name,
+            phone=phone if phone else None,
+            address=address if address else None,
+            is_active=True
+        )
+
+        messages.success(request, "Thêm khách hàng thành công.")
+        return redirect('customer_list')
+
+    return render(request, 'customer_create.html')
+
+
+def customer_update(request, id):
+    customer = get_object_or_404(Customer, id=id)
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        address = request.POST.get('address', '').strip()
+        is_active = request.POST.get('is_active')
+
+        if not name:
+            messages.error(request, "Tên khách hàng không được để trống.")
+            return redirect('customer_update', id=id)
+
+        customer.name = name
+        customer.phone = phone if phone else None
+        customer.address = address if address else None
+        customer.is_active = True if is_active == 'True' else False
+        customer.save()
+
+        messages.success(request, "Cập nhật khách hàng thành công.")
+        return redirect('customer_list')
+
+    return render(request, 'customer_update.html', {
+        'customer': customer
+    })
+
+# DASHBOARD
+from .models import (
+    ProductVariant, Customer, Supplier,
+    ImportReceipt, SaleInvoice
+)
+
+@login_required
+@admin_required
+def dashboard(request):
+    today = timezone.localdate()
+    first_day_of_month = today.replace(day=1)
+
+    money_field = DecimalField(max_digits=12, decimal_places=2)
+    money_zero = Value(Decimal('0.00'), output_field=money_field)
+
+    confirmed_receipts = ImportReceipt.objects.filter(status='confirmed')
+    confirmed_sales = SaleInvoice.objects.filter(status='confirmed')
+
+    total_products = ProductVariant.objects.filter(
+        is_active=True,
+        product__is_active=True
+    ).count()
+
+    total_customers = Customer.objects.filter(is_active=True).count()
+    total_suppliers = Supplier.objects.filter(is_active=True).count()
+    total_import_receipts = ImportReceipt.objects.count()
+    total_sale_invoices = SaleInvoice.objects.count()
+
+    total_supplier_debt = confirmed_receipts.aggregate(
+        total=Coalesce(
+            Sum(F('total_amount') - F('paid_amount')),
+            money_zero,
+            output_field=money_field
+        )
+    )['total']
+
+    total_customer_debt = confirmed_sales.filter(customer__isnull=False).aggregate(
+        total=Coalesce(
+            Sum(F('total_amount') - F('paid_amount')),
+            money_zero,
+            output_field=money_field
+        )
+    )['total']
+
+    today_revenue = confirmed_sales.filter(created_at__date=today).aggregate(
+        total=Coalesce(
+            Sum('total_amount'),
+            money_zero,
+            output_field=money_field
+        )
+    )['total']
+
+    month_revenue = confirmed_sales.filter(created_at__date__gte=first_day_of_month).aggregate(
+        total=Coalesce(
+            Sum('total_amount'),
+            money_zero,
+            output_field=money_field
+        )
+    )['total']
+
+    low_stock_products = ProductVariant.objects.select_related('product', 'unit').filter(
+        is_active=True,
+        product__is_active=True,
+        stock__lte=10
+    ).order_by('stock', 'product__name')[:10]
+
+    recent_sales = SaleInvoice.objects.select_related('customer').order_by('-id')[:5]
+    recent_receipts = ImportReceipt.objects.select_related('supplier').order_by('-id')[:5]
+
+    top_selling_products = (
+    SaleInvoiceDetail.objects
+    .filter(invoice__status='confirmed')
+    .values(
+        product_name=F('product_variant__product__name'),
+        unit_name=F('product_variant__unit__name'),
+    )
+    .annotate(
+        total_sold=Sum('quantity'),
+        total_revenue=Coalesce(
+            Sum('subtotal'),
+            money_zero,
+            output_field=money_field
+        )
+    )
+    .order_by('-total_sold', '-total_revenue')[:10]
+)
+    return render(request, 'dashboard.html', {
+        'total_products': total_products,
+        'total_customers': total_customers,
+        'total_suppliers': total_suppliers,
+        'total_import_receipts': total_import_receipts,
+        'total_sale_invoices': total_sale_invoices,
+        'total_supplier_debt': total_supplier_debt,
+        'total_customer_debt': total_customer_debt,
+        'today_revenue': today_revenue,
+        'month_revenue': month_revenue,
+        'low_stock_products': low_stock_products,
+        'top_selling_products': top_selling_products,
+        'recent_sales': recent_sales,
+        'recent_receipts': recent_receipts,
+    })
+
+def customer_debt_list(request):
+    money_field = DecimalField(max_digits=12, decimal_places=2)
+    money_zero = Value(Decimal('0.00'), output_field=money_field)
+
+    customer_debts = (
+        SaleInvoice.objects
+        .filter(status='confirmed', customer__isnull=False)
+        .values(
+            'customer_id',
+            'customer__name',
+            'customer__phone',
+            'customer__address',
+        )
+        .annotate(
+            invoice_count=Count('id'),
+            total_purchase=Coalesce(
+                Sum('total_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            total_paid=Coalesce(
+                Sum('paid_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            total_debt=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        F('total_amount') - F('paid_amount'),
+                        output_field=money_field
+                    )
+                ),
+                money_zero,
+                output_field=money_field
+            )
+        )
+        .order_by('-total_debt', 'customer__name')
+    )
+
+    summary = SaleInvoice.objects.filter(status='confirmed', customer__isnull=False).aggregate(
+        total_purchase=Coalesce(
+            Sum('total_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_paid=Coalesce(
+            Sum('paid_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_debt=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F('total_amount') - F('paid_amount'),
+                    output_field=money_field
+                )
+            ),
+            money_zero,
+            output_field=money_field
+        )
+    )
+
+    return render(request, 'customer_debt_list.html', {
+        'customer_debts': customer_debts,
+        'total_purchase': summary['total_purchase'],
+        'total_paid': summary['total_paid'],
+        'total_debt': summary['total_debt'],
+    })
+
+
+def customer_debt_detail(request, customer_id):
+    customer = get_object_or_404(Customer, pk=customer_id)
+
+    invoices = SaleInvoice.objects.filter(
+        status='confirmed',
+        customer_id=customer_id
+    ).order_by('-id')
+
+    money_field = DecimalField(max_digits=12, decimal_places=2)
+    money_zero = Value(Decimal('0.00'), output_field=money_field)
+
+    summary = invoices.aggregate(
+        total_purchase=Coalesce(
+            Sum('total_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_paid=Coalesce(
+            Sum('paid_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_debt=Coalesce(
+            Sum(
+                ExpressionWrapper(
+                    F('total_amount') - F('paid_amount'),
+                    output_field=money_field
+                )
+            ),
+            money_zero,
+            output_field=money_field
+        )
+    )
+
+    return render(request, 'customer_debt_detail.html', {
+        'customer': customer,
+        'invoices': invoices,
+        'total_purchase': summary['total_purchase'],
+        'total_paid': summary['total_paid'],
+        'total_debt': summary['total_debt'],
+    })
+
+
+
+def sales_statistics(request):
+    today = timezone.localdate()
+    current_year = today.year
+
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    month = request.GET.get('month', '').strip()
+    year = request.GET.get('year', '').strip()
+
+    money_field = DecimalField(max_digits=12, decimal_places=2)
+    money_zero = Value(Decimal('0.00'), output_field=money_field)
+
+    confirmed_sales = SaleInvoice.objects.filter(status='confirmed')
+
+    # Lọc theo khoảng ngày
+    if date_from:
+        confirmed_sales = confirmed_sales.filter(created_at__date__gte=date_from)
+
+    if date_to:
+        confirmed_sales = confirmed_sales.filter(created_at__date__lte=date_to)
+
+    # Lọc theo tháng / năm
+    if year:
+        confirmed_sales = confirmed_sales.filter(created_at__year=year)
+
+    if month:
+        confirmed_sales = confirmed_sales.filter(created_at__month=month)
+
+    summary = confirmed_sales.aggregate(
+        total_revenue=Coalesce(
+            Sum('total_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_paid=Coalesce(
+            Sum('paid_amount'),
+            money_zero,
+            output_field=money_field
+        ),
+        total_debt=Coalesce(
+            Sum(F('total_amount') - F('paid_amount')),
+            money_zero,
+            output_field=money_field
+        ),
+        total_invoices=Count('id')
+    )
+
+    revenue_by_day = (
+        confirmed_sales
+        .annotate(day=TruncDate('created_at'))
+        .values('day')
+        .annotate(
+            revenue=Coalesce(
+                Sum('total_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            invoice_count=Count('id')
+        )
+        .order_by('-day')[:31]
+    )
+
+    revenue_by_month = (
+        confirmed_sales
+        .annotate(month_value=TruncMonth('created_at'))
+        .values('month_value')
+        .annotate(
+            revenue=Coalesce(
+                Sum('total_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            invoice_count=Count('id')
+        )
+        .order_by('-month_value')
+    )
+
+    top_selling_products = (
+        SaleInvoiceDetail.objects
+        .filter(invoice__in=confirmed_sales)
+        .values(
+            product_name=F('product_variant__product__name'),
+            unit_name=F('product_variant__unit__name'),
+        )
+        .annotate(
+            total_sold=Coalesce(Sum('quantity'), 0),
+            total_revenue=Coalesce(
+                Sum('subtotal'),
+                money_zero,
+                output_field=money_field
+            )
+        )
+        .order_by('-total_sold', '-total_revenue')[:10]
+    )
+
+    top_customers = (
+        confirmed_sales
+        .filter(customer__isnull=False)
+        .values(
+            'customer_id',
+            'customer__name',
+            'customer__phone',
+        )
+        .annotate(
+            invoice_count=Count('id'),
+            total_purchase=Coalesce(
+                Sum('total_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            total_paid=Coalesce(
+                Sum('paid_amount'),
+                money_zero,
+                output_field=money_field
+            ),
+            total_debt=Coalesce(
+                Sum(F('total_amount') - F('paid_amount')),
+                money_zero,
+                output_field=money_field
+            )
+        )
+        .order_by('-total_purchase')[:10]
+    )
+
+    years = range(current_year - 5, current_year + 1)
+
+    return render(request, 'sales_statistics.html', {
+        'total_revenue': summary['total_revenue'],
+        'total_paid': summary['total_paid'],
+        'total_debt': summary['total_debt'],
+        'total_invoices': summary['total_invoices'],
+        'revenue_by_day': revenue_by_day,
+        'revenue_by_month': revenue_by_month,
+        'top_selling_products': top_selling_products,
+        'top_customers': top_customers,
+        'current_year': current_year,
+
+        'date_from': date_from,
+        'date_to': date_to,
+        'month': month,
+        'year': year,
+        'years': years,
+    })
+
+def _get_pos_cart(request):
+    return request.session.get('pos_cart', {})
+
+
+def _save_pos_cart(request, cart):
+    request.session['pos_cart'] = cart
+    request.session.modified = True
+
+
+def _build_pos_cart(request):
+    cart = _get_pos_cart(request)
+    variant_ids = [int(k) for k in cart.keys() if str(k).isdigit()]
+
+    variants = ProductVariant.objects.select_related(
+        'product', 'unit'
+    ).filter(
+        id__in=variant_ids,
+        product__is_active=True,
+        is_active=True
+    )
+
+    variant_map = {str(v.id): v for v in variants}
+
+    items = []
+    total_qty = 0
+    total_amount = Decimal('0')
+
+    cleaned_cart = {}
+
+    for variant_id, qty in cart.items():
+        variant = variant_map.get(str(variant_id))
+        if not variant:
+            continue
+
+        try:
+            qty = int(qty)
+        except (TypeError, ValueError):
+            continue
+
+        if qty <= 0:
+            continue
+
+        subtotal = variant.selling_price * qty
+
+        items.append({
+            'variant': variant,
+            'variant_id': variant.id,
+            'name': variant.product.name,
+            'unit': variant.unit.name if variant.unit else '',
+            'price': variant.selling_price,
+            'stock': variant.stock,
+            'quantity': qty,
+            'subtotal': subtotal,
+            'is_over_stock': qty > variant.stock,
+        })
+
+        cleaned_cart[str(variant.id)] = qty
+        total_qty += qty
+        total_amount += subtotal
+
+    if cleaned_cart != cart:
+        _save_pos_cart(request, cleaned_cart)
+
+    return items, total_qty, total_amount
+
+
+@login_required
+def pos_view(request):
+    q = request.GET.get('q', '').strip()
+
+    products = ProductVariant.objects.select_related(
+        'product', 'product__category', 'unit'
+    ).filter(
+        product__is_active=True,
+        is_active=True
+    )
+
+    if q:
+        products = products.filter(
+            Q(product__name__icontains=q) |
+            Q(product__brand__icontains=q) |
+            Q(product__category__name__icontains=q)
+        )
+
+    products = products.order_by('product__name')[:50]
+
+    customers = Customer.objects.filter(is_active=True).order_by('name')
+    cart_items, total_qty, total_amount = _build_pos_cart(request)
+    selected_customer_id = request.GET.get('new_customer_id', '').strip()
+
+    return render(request, 'pos.html', {
+        'products': products,
+        'customers': customers,
+        'cart_items': cart_items,
+        'total_qty': total_qty,
+        'total_amount': total_amount,
+        'q': q,
+        'selected_customer_id': selected_customer_id,
+    })
+
+
+@login_required
+def pos_add_to_cart(request):
+    if request.method != 'POST':
+        return redirect('pos')
+
+    variant_id = request.POST.get('variant_id')
+    quantity_raw = request.POST.get('quantity', '1')
+    next_q = request.POST.get('q', '').strip()
+
+    try:
+        quantity = int(quantity_raw)
+    except ValueError:
+        messages.error(request, "Số lượng không hợp lệ.")
+        return redirect(f"{reverse('pos')}?q={next_q}" if next_q else reverse('pos'))
+
+    if quantity <= 0:
+        messages.error(request, "Số lượng phải lớn hơn 0.")
+        return redirect(f"{reverse('pos')}?q={next_q}" if next_q else reverse('pos'))
+
+    variant = get_object_or_404(
+        ProductVariant.objects.select_related('product', 'unit'),
+        pk=variant_id,
+        product__is_active=True,
+        is_active=True
+    )
+
+    cart = _get_pos_cart(request)
+    current_qty = int(cart.get(str(variant.id), 0))
+    new_qty = current_qty + quantity
+
+    if new_qty > variant.stock:
+        messages.error(
+            request,
+            f"Sản phẩm '{variant.product.name}' không đủ tồn kho. "
+            f"Tồn hiện tại: {variant.stock}."
+        )
+        return redirect(f"{reverse('pos')}?q={next_q}" if next_q else reverse('pos'))
+
+    cart[str(variant.id)] = new_qty
+    _save_pos_cart(request, cart)
+
+    messages.success(request, f"Đã thêm '{variant.product.name}' vào giỏ hàng.")
+    return redirect(f"{reverse('pos')}?q={next_q}" if next_q else reverse('pos'))
+
+
+@login_required
+def pos_update_cart(request, variant_id):
+    if request.method != 'POST':
+        return redirect('pos')
+
+    quantity_raw = request.POST.get('quantity', '1')
+
+    try:
+        quantity = int(quantity_raw)
+    except ValueError:
+        messages.error(request, "Số lượng không hợp lệ.")
+        return redirect('pos')
+
+    cart = _get_pos_cart(request)
+    variant = get_object_or_404(
+        ProductVariant.objects.select_related('product'),
+        pk=variant_id,
+        product__is_active=True,
+        is_active=True
+    )
+
+    if quantity <= 0:
+        cart.pop(str(variant_id), None)
+        _save_pos_cart(request, cart)
+        messages.success(request, f"Đã xóa '{variant.product.name}' khỏi giỏ hàng.")
+        return redirect('pos')
+
+    if quantity > variant.stock:
+        messages.error(
+            request,
+            f"Sản phẩm '{variant.product.name}' không đủ tồn kho. "
+            f"Tồn hiện tại: {variant.stock}."
+        )
+        return redirect('pos')
+
+    cart[str(variant_id)] = quantity
+    _save_pos_cart(request, cart)
+    messages.success(request, f"Đã cập nhật số lượng '{variant.product.name}'.")
+    return redirect('pos')
+
+
+@login_required
+def pos_remove_from_cart(request, variant_id):
+    cart = _get_pos_cart(request)
+    cart.pop(str(variant_id), None)
+    _save_pos_cart(request, cart)
+    messages.success(request, "Đã xóa sản phẩm khỏi giỏ hàng.")
+    return redirect('pos')
+
+
+@login_required
+def pos_clear_cart(request):
+    _save_pos_cart(request, {})
+    messages.success(request, "Đã xóa toàn bộ giỏ hàng.")
+    return redirect('pos')
+
+
+@login_required
+@transaction.atomic
+def pos_checkout(request):
+    if request.method != 'POST':
+        return redirect('pos')
+
+    cart_items, total_qty, total_amount = _build_pos_cart(request)
+
+    if not cart_items:
+        messages.error(request, "Giỏ hàng đang trống.")
+        return redirect('pos')
+
+    customer_id = request.POST.get('customer')
+    note = request.POST.get('note', '').strip()
+    amount_paid_raw = request.POST.get('amount_paid', '0').strip()
+    print_invoice = request.POST.get('print_invoice') == 'on'
+
+    discount_type = request.POST.get('discount_type', 'none').strip()
+    discount_value_raw = request.POST.get('discount_value', '0').strip()
+
+    try:
+        amount_paid = Decimal(amount_paid_raw or '0')
+        discount_value = Decimal(discount_value_raw or '0')
+    except InvalidOperation:
+        messages.error(request, "Giá trị không hợp lệ.")
+        return redirect('pos')
+
+    if amount_paid < 0 or discount_value < 0:
+        messages.error(request, "Giá trị không được âm.")
+        return redirect('pos')
+
+    # ===== TÍNH GIẢM GIÁ =====
+    discount_amount = Decimal('0')
+
+    if discount_type == 'percent':
+        discount_amount = total_amount * discount_value / Decimal('100')
+    elif discount_type == 'amount':
+        discount_amount = discount_value
+
+    if discount_amount > total_amount:
+        discount_amount = total_amount
+
+    final_amount = total_amount - discount_amount
+
+    # ===== LẤY KHÁCH =====
+    customer = None
+    if customer_id:
+        customer = Customer.objects.filter(
+            pk=customer_id,
+            is_active=True
+        ).first()
+        if not customer:
+            messages.error(request, "Khách hàng không hợp lệ.")
+            return redirect('pos')
+
+    # ===== CHECK TỒN KHO =====
+    for item in cart_items:
+        if item['quantity'] > item['stock']:
+            messages.error(
+                request,
+                f"Sản phẩm '{item['name']}' không đủ tồn kho."
+            )
+            return redirect('pos')
+
+    # ===== VALIDATE THANH TOÁN =====
+    if not customer and amount_paid < final_amount:
+        messages.error(request, "Khách lẻ phải thanh toán đủ tiền.")
+        return redirect('pos')
+
+    if customer and amount_paid > final_amount:
+        messages.error(request, "Số tiền trả trước không được vượt tổng hóa đơn.")
+        return redirect('pos')
+
+    try:
+        # ===== TẠO HÓA ĐƠN =====
+        invoice = SaleInvoice.objects.create(
+            customer=customer,
+            note=note,
+            total_amount=Decimal('0'),
+            discount_type=discount_type,
+            discount_value=discount_value,
+            discount_amount=Decimal('0'),
+            final_amount=Decimal('0'),
+            paid_amount=Decimal('0'),
+            payment_status='unpaid',
+            status='draft',
+            created_by=request.user
+        )
+
+        # ===== CHI TIẾT =====
+        for item in cart_items:
+            SaleInvoiceDetail.objects.create(
+                invoice=invoice,
+                product_variant=item['variant'],
+                quantity=item['quantity'],
+                price=item['price']
+            )
+
+        # ===== TÍNH LẠI =====
+        invoice.recalc_total()
+
+        # ===== XÁC NHẬN (trừ kho + auto paid nếu khách lẻ) =====
+        invoice.confirm()
+
+        # ===== THANH TOÁN =====
+        if customer and amount_paid > 0:
+            SalePayment.objects.create(
+                invoice=invoice,
+                amount=amount_paid,
+                note='Thanh toán tại POS'
+            )
+
+        # ===== XÓA GIỎ =====
+        _save_pos_cart(request, {})
+
+        # ===== THÔNG BÁO =====
+        if not customer:
+            change_amount = amount_paid - invoice.final_amount
+            messages.success(
+                request,
+                f"Thanh toán thành công. Tiền thối lại: {change_amount:.0f} VNĐ"
+            )
+        else:
+            messages.success(request, "Thanh toán thành công.")
+
+        if print_invoice:
+            return redirect('sale_invoice_print', pk=invoice.id)
+
+        return redirect('pos')
+
+    except ValidationError as e:
+        messages.error(request, e.messages[0] if hasattr(e, 'messages') else "Không thể thanh toán.")
+        return redirect('pos')
+
+@login_required
+def pos_customer_create(request):
+    if request.method != 'POST':
+        return redirect('pos')
+
+    name = request.POST.get('name', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    address = request.POST.get('address', '').strip()
+
+    if not name:
+        messages.error(request, "Tên khách hàng không được để trống.")
+        return redirect('pos')
+
+    customer = Customer.objects.create(
+        name=name,
+        phone=phone if phone else None,
+        address=address if address else None,
+        is_active=True
+    )
+
+    messages.success(request, f"Đã thêm khách hàng '{customer.name}' thành công.")
+    return redirect(f"{reverse('pos')}?new_customer_id={customer.id}")
+
+@admin_required
+def account_list(request):
+    accounts = User.objects.select_related('profile').all().order_by('-is_superuser', 'username')
+    return render(request, 'account_list.html', {
+        'accounts': accounts
+    })
+
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.shortcuts import redirect
+from .models import UserProfile
+
+@admin_required
+def account_create(request):
+    if request.method != 'POST':
+        return redirect('account_list')
+
+    username = request.POST.get('username', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name = request.POST.get('last_name', '').strip()
+    email = request.POST.get('email', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    password = request.POST.get('password', '').strip()
+    role = request.POST.get('role', 'employee').strip()
+
+    if not username or not password:
+        messages.error(request, "Tên đăng nhập và mật khẩu không được để trống.")
+        return redirect('account_list')
+
+    if User.objects.filter(username=username).exists():
+        messages.error(request, "Tên đăng nhập đã tồn tại.")
+        return redirect('account_list')
+
+    is_admin = (role == 'admin')
+
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        is_active=True,
+        is_staff=is_admin,
+        is_superuser=is_admin
+    )
+
+    UserProfile.objects.create(
+        user=user,
+        phone=phone if phone else None
+    )
+
+    if is_admin:
+        messages.success(request, "Tạo tài khoản admin thành công.")
+    else:
+        messages.success(request, "Tạo tài khoản nhân viên thành công.")
+
+    return redirect('account_list')
+
+@admin_required
+def account_toggle_active(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+
+    # Không cho tự khóa chính mình để tránh bị đá ra ngoài
+    if user == request.user:
+        messages.error(request, "Bạn không thể tự khóa tài khoản của chính mình.")
+        return redirect('account_list')
+
+    user.is_active = not user.is_active
+    user.save(update_fields=['is_active'])
+
+    if user.is_active:
+        messages.success(request, f"Đã kích hoạt lại tài khoản '{user.username}'.")
+    else:
+        messages.success(request, f"Đã vô hiệu hóa tài khoản '{user.username}'.")
+
+    return redirect('account_list')
+
+@admin_required
+def account_update(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+
+    if request.method != 'POST':
+        return redirect('account_list')
+
+    username = request.POST.get('username', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name = request.POST.get('last_name', '').strip()
+    email = request.POST.get('email', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    role = request.POST.get('role', 'employee').strip()
+
+    if not username:
+        messages.error(request, "Tên đăng nhập không được để trống.")
+        return redirect('account_list')
+
+    existing_user = User.objects.filter(username=username).exclude(pk=user.id).first()
+    if existing_user:
+        messages.error(request, "Tên đăng nhập đã tồn tại.")
+        return redirect('account_list')
+
+    is_admin = (role == 'admin')
+
+    # Không cho tự hạ quyền chính mình từ admin thành nhân viên
+    if user == request.user and not is_admin:
+        messages.error(request, "Bạn không thể tự đổi quyền của chính mình thành nhân viên.")
+        return redirect('account_list')
+
+    user.username = username
+    user.first_name = first_name
+    user.last_name = last_name
+    user.email = email
+    user.is_staff = is_admin
+    user.is_superuser = is_admin
+    user.save()
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.phone = phone if phone else None
+    profile.save()
+
+    messages.success(request, f"Cập nhật tài khoản '{user.username}' thành công.")
+    return redirect('account_list')
+
+@admin_required
+def account_reset_password(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+
+    if request.method != 'POST':
+        return redirect('account_list')
+
+    new_password = request.POST.get('new_password', '').strip()
+    confirm_password = request.POST.get('confirm_password', '').strip()
+
+    if not new_password:
+        messages.error(request, "Mật khẩu mới không được để trống.")
+        return redirect('account_list')
+
+    if len(new_password) < 6:
+        messages.error(request, "Mật khẩu mới phải có ít nhất 6 ký tự.")
+        return redirect('account_list')
+
+    if new_password != confirm_password:
+        messages.error(request, "Xác nhận mật khẩu không khớp.")
+        return redirect('account_list')
+
+    user.set_password(new_password)
+    user.save(update_fields=['password'])
+
+    messages.success(request, f"Đã đổi mật khẩu cho tài khoản '{user.username}'.")
+    return redirect('account_list')

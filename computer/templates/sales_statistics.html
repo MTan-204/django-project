@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+  
+{% endblock %}
+
+{% block manage %}
+<div class="container-fluid mt-4">
+  <h3 class="mb-4">Thống Kê Doanh Thu</h3>
+    <div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Từ ngày</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Đến ngày</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Tháng</label>
+        <select name="month" class="form-control">
+          <option value="">-- Tất cả --</option>
+          {% for m in "123456789101112"|make_list %}
+          {% endfor %}
+          <option value="1" {% if month == '1' %}selected{% endif %}>1</option>
+          <option value="2" {% if month == '2' %}selected{% endif %}>2</option>
+          <option value="3" {% if month == '3' %}selected{% endif %}>3</option>
+          <option value="4" {% if month == '4' %}selected{% endif %}>4</option>
+          <option value="5" {% if month == '5' %}selected{% endif %}>5</option>
+          <option value="6" {% if month == '6' %}selected{% endif %}>6</option>
+          <option value="7" {% if month == '7' %}selected{% endif %}>7</option>
+          <option value="8" {% if month == '8' %}selected{% endif %}>8</option>
+          <option value="9" {% if month == '9' %}selected{% endif %}>9</option>
+          <option value="10" {% if month == '10' %}selected{% endif %}>10</option>
+          <option value="11" {% if month == '11' %}selected{% endif %}>11</option>
+          <option value="12" {% if month == '12' %}selected{% endif %}>12</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Năm</label>
+        <select name="year" class="form-control">
+          <option value="">-- Tất cả --</option>
+          {% for y in years %}
+            <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary w-100">Lọc</button>
+        <a href="{% url 'sales_statistics' %}" class="btn btn-secondary w-100">Xóa lọc</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted">Tổng doanh thu</h6>
+          <h4 class="text-success">{{ total_revenue|floatformat:0|intcomma }} VNĐ</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted">Tổng đã thu</h6>
+          <h4 class="text-primary">{{ total_paid|floatformat:0|intcomma }} VNĐ</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted">Còn nợ khách</h6>
+          <h4 class="text-danger">{{ total_debt|floatformat:0|intcomma }} VNĐ</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted">Số hóa đơn đã xác nhận</h6>
+          <h4>{{ total_invoices }}</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+          <strong>Doanh thu theo ngày (15 ngày gần nhất có phát sinh)</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Tổng số hóa đơn</th>
+                  <th>Doanh thu</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in revenue_by_day %}
+                <tr>
+                  <td>{{ item.day|date:"d/m/Y" }}</td>
+                  <td>{{ item.invoice_count }}</td>
+                  <td>{{ item.revenue|floatformat:0|intcomma }} VNĐ</td>
+                  <td></td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">Chưa có dữ liệu</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Top sản phẩm bán chạy</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Top</th>
+                  <th>Sản phẩm</th>
+                  <th>Đơn vị</th>
+                  <th>Đã bán</th>
+                  <th>Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in top_selling_products %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ item.product_name }}</td>
+                  <td>{{ item.unit_name }}</td>
+                  <td>{{ item.total_sold }}</td>
+                  <td>{{ item.total_revenue|floatformat:0|intcomma }} VNĐ</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center">Chưa có dữ liệu bán hàng</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+          <strong>Doanh thu theo tháng trong năm {{ current_year }}</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Tháng</th>
+                  <th>Tổng số hóa đơn</th>
+                  <th>Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in revenue_by_month %}
+                <tr>
+                  <td>{{ item.month_value|date:"m/Y" }}</td>
+                  <td>{{ item.invoice_count }}</td>
+                  <td>{{ item.revenue|floatformat:0|intcomma }} VNĐ</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">Chưa có dữ liệu</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Top khách hàng mua nhiều</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Top</th>
+                  <th>Khách hàng</th>
+                  <th>Số HĐ</th>
+                  <th>Đã mua</th>
+                  <th>Đã trả</th>
+                  <th>Còn nợ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in top_customers %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ item.customer__name }}</td>
+                  <td>{{ item.invoice_count }}</td>
+                  <td>{{ item.total_purchase|floatformat:0|intcomma }} VNĐ</td>
+                  <td>{{ item.total_paid|floatformat:0|intcomma }} VNĐ</td>
+                  <td>{{ item.total_debt|floatformat:0|intcomma }} VNĐ</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center">Chưa có dữ liệu khách hàng</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% if date_from or date_to or month or year %}
+  <div class="alert alert-info">
+    <strong>Đang lọc:</strong>
+    {% if date_from %}Từ ngày {{ date_from }} {% endif %}
+    {% if date_to %}đến ngày {{ date_to }} {% endif %}
+    {% if month %}| Tháng {{ month }} {% endif %}
+    {% if year %}| Năm {{ year }}{% endif %}
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+</script>
+{% endblock %}

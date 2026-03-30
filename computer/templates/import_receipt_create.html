@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block nav_button %}
+ 
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h3 class="mb-4">Tạo Phiếu Nhập</h3>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label">Nhà cung cấp</label>
+        {{ form.supplier }}
+      </div>
+
+      <hr />
+
+      <h5>Chi tiết phiếu nhập</h5>
+
+      {{ formset.management_form }}
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th>Tồn kho</th>
+            <th>Số lượng</th>
+            <th>Giá nhập</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+
+        <tbody id="formset-body">
+          {% for form in formset %}
+            <tr>
+              <td>{{ form.product_variant }}</td>
+
+              <td class="stock">0</td>
+
+              <td>{{ form.quantity }}</td>
+
+              <td>{{ form.price }}</td>
+
+              <td class="subtotal">0</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <button type="button" class="btn btn-primary mb-3" id="add-row">+ Thêm sản phẩm</button>
+
+      <div class="mt-3 fs-5">
+        <strong>Tổng tiền:</strong>
+        <span id="total-amount">0</span>
+      </div>
+
+      <br />
+
+      <button type="submit" class="btn btn-success">Lưu Phiếu Nhập</button>
+
+      <a href="/import_receipt/create/" class="btn btn-secondary">Hủy</a>
+    </form>
+  </div>
+{% endblock %}
+{% block script_manage %}
+  <script>
+    $(document).ready(function () {
+      $('#dataTable').DataTable({
+        buttons: ['copy', 'excel', 'pdf', 'print'],
+        layout: { topStart: 'buttons' },
+        paging: true,
+        select: true,
+        ordering: true,
+        responsive: true
+      })
+    })
+    
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      elem.parentNode.removeChild(elem)
+    }, 2000)
+    
+    function updateTotals() {
+      let total = 0
+    
+      document.querySelectorAll('#formset-body tr').forEach(function (row) {
+        let qty = row.querySelector("input[name$='quantity']")
+        let price = row.querySelector("input[name$='price']")
+        let subtotalCell = row.querySelector('.subtotal')
+    
+        let quantity = parseFloat(qty?.value || 0)
+        let priceValue = parseFloat(price?.value || 0)
+    
+        let subtotal = quantity * priceValue
+    
+        subtotalCell.innerText = subtotal
+    
+        total += subtotal
+      })
+    
+      document.getElementById('total-amount').innerText = total
+    }
+    
+    document.addEventListener('input', function (e) {
+      if (e.target.name.includes('quantity') || e.target.name.includes('price')) {
+        updateTotals()
+      }
+    })
+    
+    document.getElementById('add-row').addEventListener('click', function () {
+      let tableBody = document.getElementById('formset-body')
+    
+      let totalFormsInput = document.querySelector("input[name$='TOTAL_FORMS']")
+      let formCount = parseInt(totalFormsInput.value)
+    
+      let rows = document.querySelectorAll('#formset-body tr')
+      let lastRow = rows[rows.length - 1]
+    
+      let newRow = lastRow.cloneNode(true)
+    
+      newRow.querySelectorAll('input, select').forEach(function (el) {
+        if (el.name) {
+          let newName = el.name.replace(/-\d+-/, `-${formCount}-`)
+          let newId = 'id_' + newName
+    
+          el.name = newName
+          el.id = newId
+          el.value = ''
+        }
+      })
+    
+      newRow.querySelector('.subtotal').innerText = '0'
+    
+      tableBody.appendChild(newRow)
+    
+      totalFormsInput.value = formCount + 1
+    })
+    document.addEventListener('change', function (e) {
+      if (e.target.name.includes('product_variant')) {
+        let productId = e.target.value
+    
+        let row = e.target.closest('tr')
+    
+        fetch(`/get-stock/?product_id=${productId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            row.querySelector('.stock').innerText = data.stock
+          })
+      }
+    })
+  </script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block nav_button %}          
+  
+{% endblock nav_button %}
+
+{% block manage %}          
+        <div class="container-fluid">
+          <table class="table border border-success border-3 align-middle fs-6" id="dataTable" cellspacing="0" data-order='[[ 1, "asc" ]]' data-page-length='15'>
+            <h3 class="text-center text-success fw-bold mb-3">
+              Quản Lý Nhà Cung Cấp
+            </h3>
+              <thead>
+                <tr>
+                  <th>Tên</th>
+                  <th>SĐT</th>
+                  <th>Địa Chỉ</th>                 
+                  <th>Ghi Chú</th>
+                  <th>Trạng Thái</th>
+                  <th>Hành Động</th>
+                </tr>
+              </thead>                      
+          <tbody>
+            {% for s in suppliers %}
+            <tr>
+                  <td>{{s.name}}</td>
+                  <td>{{s.phone}}</td>
+                  <td>{{s.address}}</td>
+                  <td></td>
+                  <td>
+                  {% if s.is_active %}
+                  <span class="badge bg-success">Đang hoạt động</span>
+                  {% else %}
+                  <span class="badge bg-danger">Ngừng hoạt động</span>
+                  {% endif %}
+                  </td>
+              <td>
+                {% comment %} <a href="/product/{{p.id}}/"><img src="{% static 'icons/detail.png' %}" alt="detail" width="20px" height="20px"></a> {% endcomment %}
+                <a href="/supplier/update/{{s.id}}"><img src="{% static 'icons/edit.png' %}" alt="edit" width="20px" height="20px"></a>
+                <a href="/supplier/delete/{{s.id}}" onclick="return confirm('Bạn có chắc muốn xóa ?')"><img src="{% static 'icons/remove.png' %}" alt="remove" width="20px" height="20px"></a>
+              </td>               
+            </tr>
+            {% endfor %}
+            </tbody>
+      </table>
+                  {% if messages %}
+                  <div id="alert" class="alert alert-success fade show text-center mt-3" role="alert">
+                    {% for mes in messages %} {{mes}} {% endfor %}
+                  </div>
+                  {% endif %}
+        </div>
+
+              <!-- Modal -->
+         <div class="modal fade" id="create_supplier" tabindex="-1" aria-labelledby="create_supplierLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border border-success border-3 rounded-3">
+              <div class="modal-header bg-success text-white">
+                <h1 class="modal-title fs-6" id="create_productLabel">Thêm Nhà Cung Cấp</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-0">
+                <form method="post" action="{% url 'supplier' %}">
+                  {% csrf_token %}
+                  <table class="table table-success table-hover align-middle fs-6">                     
+                    <tr>
+                        <td>Tên Nhà Cung Cấp</td>                
+                        <td><input type="text" class="w-100" name="name"/></td>
+                    </tr>
+                    <tr>
+                        <td>SĐT</td>                
+                        <td><input type="text" class="w-100" name="phone"></td>                                    
+                    </tr>
+                    <tr>
+                      <td>Địa chỉ</td>
+                      <td><input type="text" class="w-100" name="address"></td>    
+                    </tr>                                    
+                </table>                     
+              </div> 
+              <!-- <div class="modal-footer"> -->
+                <div class="d-flex justify-content-end align-items-center gap-2 pb-2 pe-2">
+                  <button type="submit" class="btn btn-success">Thêm mới</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+              </div>
+              <!-- </div> -->
+              </form>
+            </div>
+          </div>
+        </div> 
+        
+
+{% endblock manage %}
+{% block script_manage %}
+<script>
+  $(document).ready(function() {
+  $('#dataTable').DataTable( {      
+    buttons: ['copy', 'excel', 'pdf','print'],
+    layout: {topStart: 'buttons'},
+    paging: true,
+    select: true,    
+    ordering:  true,   
+    responsive: true
+  } );
+} );
+
+function dark_mode(){
+  var element = document.body;
+  element.dataset.bsTheme = element.dataset.bsTheme == "light" ? "dark" : "light";
+}
+setTimeout(() => {
+    const elem = document.getElementById("alert");
+    elem.parentNode.removeChild(elem);}, 2000);    
+
+$(document).ready(function(){
+    $('#dataTable').DataTable();
+});
+</script>
+{% endblock script_manage %}
+

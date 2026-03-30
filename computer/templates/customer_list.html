@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block nav_button %}
+{% endblock %}
+
+{% block manage %}
+<div class="container mt-4">
+  <h3>Danh Sách Khách Hàng</h3>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" id="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createCustomerModal">
+    + Thêm khách hàng
+  </button>
+
+  <table class="table table-bordered table-striped" id="dataTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tên khách hàng</th>
+        <th>Số điện thoại</th>
+        <th>Địa chỉ</th>
+        <th>Trạng thái</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>{{ c.id }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.phone }}</td>
+        <td>{{ c.address }}</td>
+        <td>
+          {% if c.is_active %}
+            <span class="badge bg-success">Hoạt động</span>
+          {% else %}
+            <span class="badge bg-secondary">Ngưng hoạt động</span>
+          {% endif %}
+        </td>
+        <td>
+          <button
+            type="button"
+            class="btn btn-warning btn-sm edit-customer-btn"
+            data-bs-toggle="modal"
+            data-bs-target="#updateCustomerModal"
+            data-id="{{ c.id }}"
+            data-name="{{ c.name }}"
+            data-phone="{{ c.phone|default_if_none:'' }}"
+            data-address="{{ c.address|default_if_none:'' }}"
+            data-active="{{ c.is_active|yesno:'True,False' }}"
+          >
+            Sửa
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal thêm khách hàng -->
+<div class="modal fade" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'customer_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="createCustomerModalLabel">Thêm Khách Hàng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên khách hàng</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <textarea name="address" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal sửa khách hàng -->
+<div class="modal fade" id="updateCustomerModal" tabindex="-1" aria-labelledby="updateCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="updateCustomerForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateCustomerModalLabel">Sửa Khách Hàng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên khách hàng</label>
+            <input type="text" name="name" id="update_name" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" id="update_phone" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <textarea name="address" id="update_address" class="form-control" rows="3"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Trạng thái</label>
+            <select name="is_active" id="update_is_active" class="form-control">
+              <option value="True">Hoạt động</option>
+              <option value="False">Ngưng hoạt động</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  $(document).ready(function () {
+    $('#dataTable').DataTable({
+      buttons: ['copy', 'excel', 'pdf', 'print'],
+      layout: { topStart: 'buttons' },
+      paging: true,
+      ordering: true,
+      responsive: true
+    })
+  })
+
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+
+  setTimeout(() => {
+    const elem = document.getElementById('alert')
+    if (elem) {
+      elem.parentNode.removeChild(elem)
+    }
+  }, 2000)
+
+  document.querySelectorAll('.edit-customer-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const id = this.getAttribute('data-id')
+      const name = this.getAttribute('data-name')
+      const phone = this.getAttribute('data-phone')
+      const address = this.getAttribute('data-address')
+      const active = this.getAttribute('data-active')
+
+      document.getElementById('update_name').value = name
+      document.getElementById('update_phone').value = phone
+      document.getElementById('update_address').value = address
+      document.getElementById('update_is_active').value = active
+      document.getElementById('updateCustomerForm').action = `/customer/update/${id}/`
+    })
+  })
+</script>
+{% endblock %}

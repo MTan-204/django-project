@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+  
+{% endblock %}
+
+{% block manage %}
+<div class="container-fluid mt-4">
+  <h3 class="mb-4">POS Bán Hàng</h3>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" id="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Cột trái: sản phẩm -->
+    <div class="col-12 col-xl-7">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+          <strong>Tìm sản phẩm</strong>
+        </div>
+        <div class="card-body">
+          <form method="GET" class="row g-2">
+            <div class="col-md-10">
+              <input
+                type="text"
+                name="q"
+                class="form-control"
+                placeholder="Tìm theo tên, hãng hoặc loại sản phẩm..."
+                value="{{ q }}"
+              >
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary w-100">Tìm</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Danh sách sản phẩm</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th>Loại</th>
+                  <th>Đơn vị</th>
+                  <th>Tồn kho</th>
+                  <th>Giá bán</th>
+                  <th>SL</th>
+                  <th>Thêm</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in products %}
+                <tr class="{% if p.stock == 0 %}table-secondary{% elif p.stock <= 10 %}table-danger{% endif %}">
+                  <td>
+                    <strong>{{ p.product.name }}</strong><br>
+                    <small class="text-muted">{{ p.product.brand }}</small>
+                  </td>
+                  <td>{{ p.product.category.name }}</td>
+                  <td>{{ p.unit.name }}</td>
+                  <td>
+                    {% if p.stock == 0 %}
+                      <span class="badge bg-dark">Hết hàng</span>
+                    {% elif p.stock <= 10 %}
+                      <span class="badge bg-danger">Sắp hết: {{ p.stock }}</span>
+                    {% else %}
+                      <span class="badge bg-success">{{ p.stock }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ p.selling_price|floatformat:0|intcomma }} VNĐ</td>
+                  <td style="width: 110px;">
+                    <form method="POST" action="{% url 'pos_add_to_cart' %}" class="d-flex gap-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="variant_id" value="{{ p.id }}">
+                      <input type="hidden" name="q" value="{{ q }}">
+                      <input type="number" name="quantity" min="1" value="1" class="form-control form-control-sm">
+                    </td>
+                  <td style="width: 90px;">
+                      <button type="submit" class="btn btn-success btn-sm w-100" {% if p.stock == 0 %}disabled{% endif %}>
+                        Thêm
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center">Không tìm thấy sản phẩm</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: giỏ hàng -->
+    <div class="col-12 col-xl-5">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Giỏ hàng</strong>
+          <a href="{% url 'pos_clear_cart' %}" class="btn btn-outline-danger btn-sm">Xóa giỏ</a>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th>Đơn giá</th>
+                  <th>SL</th>
+                  <th>TT</th>
+                  <th>Xóa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in cart_items %}
+                <tr class="{% if item.is_over_stock %}table-danger{% endif %}">
+                  <td>
+                    <strong>{{ item.name }}</strong><br>
+                    <small class="text-muted">{{ item.unit }} | Tồn: {{ item.stock }}</small>
+                    {% if item.is_over_stock %}
+                      <div class="text-danger small">Vượt tồn kho</div>
+                    {% endif %}
+                  </td>
+                  <td>{{ item.price|floatformat:0|intcomma }}</td>
+                  <td style="width: 115px;">
+                    <form method="POST" action="{% url 'pos_update_cart' item.variant_id %}" class="d-flex gap-1">
+                      {% csrf_token %}
+                      <input type="number" name="quantity" min="0" value="{{ item.quantity }}" class="form-control form-control-sm">
+                      <button type="submit" class="btn btn-warning btn-sm">Lưu</button>
+                    </form>
+                  </td>
+                  <td>{{ item.subtotal|floatformat:0|intcomma }}</td>
+                  <td>
+                    <a href="{% url 'pos_remove_from_cart' item.variant_id %}" class="btn btn-danger btn-sm">X</a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center">Giỏ hàng đang trống</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <hr>
+
+          <div class="d-flex justify-content-between">
+            <strong>Tổng số lượng:</strong>
+            <strong>{{ total_qty }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <strong>Tổng trước giảm:</strong>
+            <strong id="cart-total" data-total="{{ total_amount }}">{{ total_amount|floatformat:0|intcomma }} VNĐ</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <strong>Giảm giá:</strong>
+            <strong id="discount-amount">0 VNĐ</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <strong class="text-primary">Tổng sau giảm:</strong>
+            <strong id="final-total" class="text-primary">{{ total_amount|floatformat:0|intcomma }} VNĐ</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Thanh toán</strong>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{% url 'pos_checkout' %}">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label class="form-label">Khách hàng (bỏ trống nếu là khách lẻ)</label>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCustomerModal">
+                    Thêm mới
+                </button>
+              <select name="customer" id="customer-select" class="form-control">
+                <option value="">-- Khách lẻ --</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}" {% if selected_customer_id == c.id|stringformat:"s" %}selected{% endif %}>
+                    {{ c.name }}{% if c.phone %} - {{ c.phone }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">
+                Khách lẻ phải thanh toán đủ. Khách hàng có thể trả trước một phần hoặc ghi nợ.
+              </small>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Loại giảm giá</label>
+                <select name="discount_type" id="discount-type" class="form-control">
+                  <option value="none">Không giảm</option>
+                  <option value="percent">Giảm theo %</option>
+                  <option value="amount">Giảm theo tiền</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Giá trị giảm</label>
+                <input type="number" name="discount_value" id="discount-value" min="0" step="1" value="0" class="form-control">
+                <small class="text-muted">Nếu chọn %, nhập 5 hoặc 10. Nếu chọn tiền, nhập số tiền giảm.</small>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Số tiền khách trả / trả trước</label>
+              <input type="number" name="amount_paid" id="amount-paid" min="0" step="1" value="0" class="form-control" required>
+              <small id="payment-hint" class="text-muted d-block mt-1"></small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Ghi chú</label>
+              <textarea name="note" class="form-control" rows="3" placeholder="Nhập ghi chú nếu có"></textarea>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="print_invoice" id="print_invoice" checked>
+                <label class="form-check-label" for="print_invoice">
+                In hóa đơn sau khi thanh toán
+                </label>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg" {% if not cart_items %}disabled{% endif %}>
+                Thanh toán 
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'pos_customer_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="createCustomerModalLabel">Thêm khách hàng mới</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tên khách hàng</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <textarea name="address" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Lưu khách hàng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+
+  setTimeout(() => {
+    const elem = document.getElementById('alert')
+    if (elem) {
+      elem.parentNode.removeChild(elem)
+    }
+  }, 2500)
+
+  function calculateFinalTotal() {
+    const cartTotalEl = document.getElementById('cart-total')
+    const discountTypeEl = document.getElementById('discount-type')
+    const discountValueEl = document.getElementById('discount-value')
+    const discountAmountEl = document.getElementById('discount-amount')
+    const finalTotalEl = document.getElementById('final-total')
+
+    const total = parseFloat(cartTotalEl.dataset.total || 0)
+    const discountType = discountTypeEl ? discountTypeEl.value : 'none'
+    const discountValue = parseFloat(discountValueEl?.value || 0)
+
+    let discountAmount = 0
+
+    if (discountType === 'percent') {
+      discountAmount = total * discountValue / 100
+    } else if (discountType === 'amount') {
+      discountAmount = discountValue
+    }
+
+    if (discountAmount > total) {
+      discountAmount = total
+    }
+
+    const finalTotal = total - discountAmount
+
+    discountAmountEl.innerText = `${discountAmount.toLocaleString('vi-VN')} VNĐ`
+    finalTotalEl.innerText = `${finalTotal.toLocaleString('vi-VN')} VNĐ`
+
+    return {
+      total: total,
+      discountAmount: discountAmount,
+      finalTotal: finalTotal
+    }
+  }
+
+  function updatePaymentHint() {
+    const customerSelect = document.getElementById('customer-select')
+    const amountPaidInput = document.getElementById('amount-paid')
+    const paymentHint = document.getElementById('payment-hint')
+
+    const totals = calculateFinalTotal()
+    const paid = parseFloat(amountPaidInput.value || 0)
+    const isRetail = !customerSelect.value
+
+    if (isRetail) {
+      if (paid >= totals.finalTotal) {
+        const change = paid - totals.finalTotal
+        paymentHint.innerHTML = `Khách lẻ. Tiền thối lại: <strong>${change.toLocaleString('vi-VN')}</strong> VNĐ`
+      } else {
+        const lack = totals.finalTotal - paid
+        paymentHint.innerHTML = `Khách lẻ cần trả đủ. Còn thiếu: <strong>${lack.toLocaleString('vi-VN')}</strong> VNĐ`
+      }
+    } else {
+      const debt = totals.finalTotal - paid
+      if (debt > 0) {
+        paymentHint.innerHTML = `Khách hàng trả trước. Còn nợ: <strong>${debt.toLocaleString('vi-VN')}</strong> VNĐ`
+      } else {
+        paymentHint.innerHTML = `Khách hàng đã thanh toán đủ.`
+      }
+    }
+  }
+
+  document.getElementById('customer-select').addEventListener('change', updatePaymentHint)
+  document.getElementById('amount-paid').addEventListener('input', updatePaymentHint)
+
+  const discountTypeEl = document.getElementById('discount-type')
+  const discountValueEl = document.getElementById('discount-value')
+
+  if (discountTypeEl) {
+    discountTypeEl.addEventListener('change', updatePaymentHint)
+  }
+
+  if (discountValueEl) {
+    discountValueEl.addEventListener('input', updatePaymentHint)
+  }
+
+  updatePaymentHint()
+</script>
+{% endblock %}

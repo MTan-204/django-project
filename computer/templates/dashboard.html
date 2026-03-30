@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+  <a href="/dashboard/" class="btn btn-success">
+    <img src="{% static 'icons/home.png' %}" alt="home" width="30px" height="25px" /> Dashboard
+  </a>
+  <a href="/product/manage" class="btn btn-success">Quản Lý Sản Phẩm</a>
+  <a href="/import-receipt/" class="btn btn-success">Phiếu Nhập</a>
+  <a href="/sale-invoice/" class="btn btn-success">Hóa Đơn Bán</a>
+  <a href="/customer/" class="btn btn-success">Khách Hàng</a>
+  <a href="/supplier/" class="btn btn-success">Nhà Cung Cấp</a>
+  <a href="/customer/debt/" class="btn btn-success">Công Nợ Khách Hàng</a>
+  <a href="/statistics/sales/" class="btn btn-success">Thống Kê Doanh Thu</a>
+  <a href="/logout" class="btn btn-success">
+    <img src="{% static 'icons/signout.png' %}" alt="signout" width="30px" height="25px" /> Thoát
+  </a>
+  <div class="form-check form-switch mx-4 text-white">
+    <input type="checkbox" class="form-check-input p-2" role="switch" id="flexSwitchCheckChecked" checked onclick="dark_mode()" />
+    Dark/Light Mode
+  </div>
+{% endblock %}
+
+{% block manage %}
+<div class="container-fluid mt-4">
+  <h3 class="mb-4">Dashboard Quản Lý</h3>
+
+  <!-- Thẻ thống kê -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Tổng sản phẩm</h6>
+          <h3 class="mb-0">{{ total_products }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Tổng khách hàng</h6>
+          <h3 class="mb-0">{{ total_customers }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Tổng nhà cung cấp</h6>
+          <h3 class="mb-0">{{ total_suppliers }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Phiếu nhập</h6>
+          <h3 class="mb-0">{{ total_import_receipts }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Hóa đơn bán</h6>
+          <h3 class="mb-0">{{ total_sale_invoices }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Doanh thu hôm nay</h6>
+          <h5 class="mb-0 text-success">{{ today_revenue|floatformat:0|intcomma }} VNĐ</h5>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Doanh thu tháng này</h6>
+          <h5 class="mb-0 text-success">{{ month_revenue|floatformat:0|intcomma }} VNĐ</h5>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Nợ nhà cung cấp</h6>
+          <h5 class="mb-0 text-danger">{{ total_supplier_debt|floatformat:0|intcomma }} VNĐ</h5>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Nợ khách hàng</h6>
+          <h5 class="mb-0 text-danger">{{ total_customer_debt|floatformat:0|intcomma }} VNĐ</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Khu vực bảng -->
+  <div class="row g-4">
+    <!-- Cột trái -->
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+          <strong>Sản phẩm sắp hết hàng</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th>Đơn vị</th>
+                  <th>Tồn kho</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in low_stock_products %}
+                <tr>
+                  <td>{{ item.product.name }}</td>
+                  <td>{{ item.unit.name }}</td>
+                  <td><span class="badge bg-danger">{{ item.stock }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center">Không có sản phẩm sắp hết hàng</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Top sản phẩm bán chạy</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Top</th>
+                  <th>Sản phẩm</th>
+                  <th>Đơn vị</th>
+                  <th>Đã bán</th>
+                  <th>Doanh thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in top_selling_products %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ item.product_name }}</td>
+                  <td>{{ item.unit_name }}</td>
+                  <td>{{ item.total_sold }}</td>
+                  <td>{{ item.total_revenue|floatformat:0|intcomma }} VNĐ</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center">Chưa có dữ liệu bán hàng</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải -->
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+          <strong>Hóa đơn bán gần đây</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Khách hàng</th>
+                  <th>Tổng tiền</th>
+                  <th>TT thanh toán</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in recent_sales %}
+                <tr>
+                  <td>#{{ r.id }}</td>
+                  <td>
+                    {% if r.customer %}
+                      {{ r.customer.name }}
+                    {% else %}
+                      Khách lẻ
+                    {% endif %}
+                  </td>
+                  <td>{{ r.total_amount|floatformat:0|intcomma }} VNĐ</td>
+                  <td>
+                    {% if r.payment_status == 'unpaid' %}
+                      <span class="badge bg-danger">Chưa thanh toán</span>
+                    {% elif r.payment_status == 'partial' %}
+                      <span class="badge bg-warning text-dark">Một phần</span>
+                    {% elif r.payment_status == 'paid' %}
+                      <span class="badge bg-success">Đã thanh toán</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center">Chưa có hóa đơn bán</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header">
+          <strong>Phiếu nhập gần đây</strong>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nhà cung cấp</th>
+                  <th>Tổng tiền</th>
+                  <th>TT thanh toán</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in recent_receipts %}
+                <tr>
+                  <td>#{{ r.id }}</td>
+                  <td>{{ r.supplier.name }}</td>
+                  <td>{{ r.total_amount|floatformat:0|intcomma }} VNĐ</td>
+                  <td>
+                    {% if r.payment_status == 'unpaid' %}
+                      <span class="badge bg-danger">Chưa thanh toán</span>
+                    {% elif r.payment_status == 'partial' %}
+                      <span class="badge bg-warning text-dark">Một phần</span>
+                    {% elif r.payment_status == 'paid' %}
+                      <span class="badge bg-success">Đã thanh toán</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center">Chưa có phiếu nhập</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+<script>
+  function dark_mode() {
+    var element = document.body
+    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+  }
+</script>
+{% endblock %}

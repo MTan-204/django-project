@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block nav_button %}
+
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h3>Tạo Hóa Đơn Bán</h3>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" id="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+      {% csrf_token %}
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Khách hàng</label>
+          {{ form.customer }}
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Loại giảm giá</label>
+          {{ form.discount_type }}
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Giá trị giảm</label>
+          {{ form.discount_value }}
+          <small class="text-muted">Nếu chọn %, nhập 5 hoặc 10. Nếu chọn tiền, nhập số tiền giảm.</small>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Ghi chú</label>
+        {{ form.note }}
+      </div>
+      <hr />
+
+      <h5>Chi tiết hóa đơn bán</h5>
+
+      {{ formset.management_form }}
+
+      <table class="table table-bordered" id="detail-table">
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th>Tồn kho</th>
+            <th>Số lượng bán</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+            <th>Xóa</th>
+          </tr>
+        </thead>
+        <tbody id="formset-body">
+          {% for f in formset %}
+            <tr class="form-row">
+              <td>
+                {{ f.id }}
+                {{ f.product_variant }}
+                {% if f.product_variant.errors %}
+                  <div class="text-danger small">{{ f.product_variant.errors }}</div>
+                {% endif %}
+              </td>
+              <td class="stock">0</td>
+              <td>
+                {{ f.quantity }}
+                {% if f.quantity.errors %}
+                  <div class="text-danger small">{{ f.quantity.errors }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {{ f.price }}
+                {% if f.price.errors %}
+                  <div class="text-danger small">{{ f.price.errors }}</div>
+                {% endif %}
+              </td>
+              <td class="subtotal">0</td>
+              <td class="text-center">
+                {% if f.DELETE %}
+                  {{ f.DELETE }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <button type="button" class="btn btn-secondary mb-3" id="add-row">+ Thêm dòng sản phẩm</button>
+
+      <div class="mb-3">
+        <h5>Tổng trước giảm: <span id="total-amount">0</span> VNĐ</h5>
+        <h5>Giảm giá: <span id="discount-amount">0</span> VNĐ</h5>
+        <h5 class="text-primary">Tổng sau giảm: <span id="final-amount">0</span> VNĐ</h5>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Lưu hóa đơn bán</button>
+      <a href="{% url 'sale_invoice_list' %}" class="btn btn-secondary">Quay lại</a>
+    </form>
+  </div>
+{% endblock %}
+
+{% block script_manage %}
+  <script>
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      if (elem) {
+        elem.parentNode.removeChild(elem)
+      }
+    }, 2000)
+
+    function updateTotals() {
+      let total = 0
+
+      document.querySelectorAll('#formset-body tr').forEach(function (row) {
+        let qty = row.querySelector("input[name$='quantity']")
+        let price = row.querySelector("input[name$='price']")
+        let del = row.querySelector("input[name$='DELETE']")
+        let subtotalCell = row.querySelector('.subtotal')
+
+        if (del && del.checked) {
+          subtotalCell.innerText = '0'
+          return
+        }
+
+        let quantity = parseFloat(qty?.value || 0)
+        let priceValue = parseFloat(price?.value || 0)
+
+        let subtotal = quantity * priceValue
+        subtotalCell.innerText = subtotal.toLocaleString('vi-VN')
+
+        total += subtotal
+      })
+
+      let discountType = document.getElementById('id_discount_type')?.value || 'none'
+      let discountValue = parseFloat(document.getElementById('id_discount_value')?.value || 0)
+
+      let discountAmount = 0
+
+      if (discountType === 'percent') {
+        discountAmount = total * discountValue / 100
+      } else if (discountType === 'amount') {
+        discountAmount = discountValue
+      }
+
+      if (discountAmount > total) {
+        discountAmount = total
+      }
+
+      let finalTotal = total - discountAmount
+
+      document.getElementById('total-amount').innerText = total.toLocaleString('vi-VN')
+      document.getElementById('discount-amount').innerText = discountAmount.toLocaleString('vi-VN')
+      document.getElementById('final-amount').innerText = finalTotal.toLocaleString('vi-VN')
+    }
+
+    document.addEventListener('input', function (e) {
+      if (
+        e.target.name &&
+        (
+          e.target.name.includes('quantity') ||
+          e.target.name.includes('price') ||
+          e.target.name === 'discount_value'
+        )
+      ) {
+        updateTotals()
+      }
+    })
+
+    document.addEventListener('change', function (e) {
+      if (e.target.name && e.target.name.includes('DELETE')) {
+        updateTotals()
+      }
+
+      if (e.target.id === 'id_discount_type') {
+        updateTotals()
+      }
+
+      if (e.target.name && e.target.name.includes('product_variant')) {
+        let productId = e.target.value
+        let row = e.target.closest('tr')
+
+        fetch(`/get-stock/?product_id=${productId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            row.querySelector('.stock').innerText = data.stock
+          })
+          .catch(() => {
+            row.querySelector('.stock').innerText = '0'
+          })
+      }
+    })
+
+    document.getElementById('add-row').addEventListener('click', function () {
+      let tableBody = document.getElementById('formset-body')
+      let totalFormsInput = document.querySelector("input[name$='TOTAL_FORMS']")
+      let formCount = parseInt(totalFormsInput.value)
+
+      let rows = document.querySelectorAll('#formset-body tr')
+      let lastRow = rows[rows.length - 1]
+      let newRow = lastRow.cloneNode(true)
+
+      newRow.querySelectorAll('input, select').forEach(function (el) {
+        if (el.name) {
+          let newName = el.name.replace(/-\d+-/, `-${formCount}-`)
+          let newId = 'id_' + newName
+
+          el.name = newName
+          el.id = newId
+
+          if (el.type === 'checkbox') {
+            el.checked = false
+          } else {
+            el.value = ''
+          }
+        }
+      })
+
+      let stockCell = newRow.querySelector('.stock')
+      if (stockCell) stockCell.innerText = '0'
+
+      let subtotalCell = newRow.querySelector('.subtotal')
+      if (subtotalCell) subtotalCell.innerText = '0'
+
+      tableBody.appendChild(newRow)
+      totalFormsInput.value = formCount + 1
+
+      updateTotals()
+    })
+
+    updateTotals()
+  </script>
+{% endblock %}

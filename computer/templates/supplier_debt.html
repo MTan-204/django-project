@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block nav_button %}
+ 
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h4>Công nợ nhà cung cấp</h4>
+
+    <table class="table table-bordered">
+      <tr>
+        <th>Nhà cung cấp</th>
+        <th>Tổng nhập</th>
+        <th>Đã trả</th>
+        <th>Còn nợ</th>
+      </tr>
+
+      {% for s in suppliers %}
+        <tr>
+          <td>{{ s.name }}</td>
+
+          <td>{{ s.total_import|default:0 }}</td>
+
+          <td>{{ s.total_paid|default:0 }}</td>
+
+          <td>{{ s.debt|default:0 }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+{% endblock %}
+{% block script_manage %}
+  <script>
+    $(document).ready(function () {
+      $('#dataTable').DataTable({
+        buttons: ['copy', 'excel', 'pdf', 'print'],
+        layout: { topStart: 'buttons' },
+        paging: true,
+        select: true,
+        ordering: true,
+        responsive: true
+      })
+    })
+    
+    function dark_mode() {
+      var element = document.body
+      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
+    }
+    setTimeout(() => {
+      const elem = document.getElementById('alert')
+      elem.parentNode.removeChild(elem)
+    }, 2000)
+  </script>
+{% endblock %}

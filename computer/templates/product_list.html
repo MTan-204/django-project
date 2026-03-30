@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block nav_button %}        
+ 
+{% endblock nav_button %}
+
+{% block index %}        
+       <a href="/product/manage" class="btn btn-success"><img src="{% static 'icons/login.png' %}" alt="login" width="30px" height="25px"> Đăng Nhập</a>
+        <div class="container-fluid">
+            <table class="table border border-success border-3 align-middle fs-6" id="dataTable" cellspacing="0" data-order='[[ 1, "asc" ]]' data-page-length='15'>
+              <thead>
+                          <tr>
+                              <th>ID</th>
+                              <th>Tên</th>
+                              <th>Hãng</th>
+                              <th>Loại</th>
+                              <th>Đơn vị</th>
+                              <th>Số lượng</th>
+                              <th>Đơn Giá</th>
+                          </tr>
+              </thead>                      
+                      <tbody>
+                        {% for p in products %}
+                        <tr>
+                          <td>{{p.id}}</td>
+                          <td>{{p.product.name}}</td>
+                          <td>{{p.product.brand}}</td>
+                          <td>{{p.product.category.name|default:"-"}}</td>
+                          <td>{{p.unit}}</td>
+                          <td>{{p.stock}}</td>
+                          <td>{{p.selling_price}}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                  </table>
+        </div>
+
+{% endblock index %}
+{% block script_index %}
+<script>
+  $(document).ready(function() {
+  $('#dataTable').DataTable( {    
+    buttons: ['copy', 'excel', 'pdf','print'],
+    layout: {topStart: 'buttons'},
+    paging: true,
+    select: true,    
+    ordering:  true,   
+    responsive: true
+  } );
+} );
+function dark_mode(){
+  var element = document.body;
+  element.dataset.bsTheme = element.dataset.bsTheme == "light" ? "dark" : "light";
+}
+</script>
+{% endblock script_index %}

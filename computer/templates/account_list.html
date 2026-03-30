@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block nav_button %}
+  <a href="/dashboard/" class="btn btn-success"><img src="{% static 'icons/home.png' %}" alt="home" width="30px" height="25px" /> Dashboard</a>
+  <a href="/accounts-manager/" class="btn btn-primary">Quản Lý Tài Khoản</a>
+  <a href="/logout" class="btn btn-success"><img src="{% static 'icons/signout.png' %}" alt="signout" width="30px" height="25px" /> Thoát</a>
+{% endblock %}
+
+{% block manage %}
+  <div class="container mt-4">
+    <h3 class="mb-4">Quản Lý Tài Khoản</h3>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header">
+        <strong>Tạo tài khoản mới</strong>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{% url 'account_create' %}">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Tên đăng nhập</label>
+              <input type="text" name="username" class="form-control" required />
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Họ</label>
+              <input type="text" name="last_name" class="form-control" />
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Tên</label>
+              <input type="text" name="first_name" class="form-control" />
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" name="phone" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" />
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Quyền</label>
+              <select name="role" class="form-control">
+                <option value="employee">Nhân viên</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Mật khẩu</label>
+              <input type="password" name="password" class="form-control" required />
+            </div>
+
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-primary">Tạo tài khoản</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <table class="table table-bordered table-striped" id="dataTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tên đăng nhập</th>
+          <th>Họ tên</th>
+          <th>Số điện thoại</th>
+          <th>Ngày tạo</th>
+          <th>Email</th>
+          <th>Quyền</th>
+          <th>Trạng thái</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in accounts %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td>
+              {% if u.last_name or u.first_name %}
+                {{ u.last_name }} {{ u.first_name }}
+              {% else %}
+                ---
+              {% endif %}
+            </td>
+            <td>
+              {% if u.profile and u.profile.phone %}
+                {{ u.profile.phone }}
+              {% else %}
+                ---
+              {% endif %}
+            </td>
+            <td>{{ u.date_joined|date:'d/m/Y H:i' }}</td>
+            <td>{{ u.email|default:'---' }}</td>
+
+            <td>
+              {% if u.is_superuser %}
+                <span class="badge bg-danger">Admin</span>
+              {% else %}
+                <span class="badge bg-secondary">Nhân viên</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if u.is_active %}
+                <span class="badge bg-success">Đang hoạt động</span>
+              {% else %}
+                <span class="badge bg-dark">Đã khóa</span>
+              {% endif %}
+            </td>
+
+            <td>
+              <button type="button"
+                class="btn btn-info btn-sm edit-account-btn"
+                data-bs-toggle="modal"
+                data-bs-target="#updateAccountModal"
+                data-id="{{ u.id }}"
+                data-username="{{ u.username }}"
+                data-first_name="{{ u.first_name|default_if_none:'' }}"
+                data-last_name="{{ u.last_name|default_if_none:'' }}"
+                data-email="{{ u.email|default_if_none:'' }}"
+                data-phone="{% if u.profile and u.profile.phone %}{{ u.profile.phone }}{% endif %}"
+                data-role="{% if u.is_superuser %}
+                  admin
+                {% else %}
+                  employee
+                {% endif %}">
+                Sửa
+              </button>
+
+              <button type="button" class="btn btn-secondary btn-sm reset-password-btn" data-bs-toggle="modal" data-bs-target="#resetPasswordModal" data-id="{{ u.id }}" data-username="{{ u.username }}">Đổi mật khẩu</button>
+
+              {% if u != request.user %}
+                <a href="{% url 'account_toggle_active' u.id %}" class="btn btn-warning btn-sm" onclick="return confirm('Bạn có chắc muốn thay đổi trạng thái tài khoản này không?');">
+                  {% if u.is_active %}
+                    Khóa
+                  {% else %}
+                    Mở khóa
+                  {% endif %}
+                </a>
+              {% else %}
+                <span class="text-muted d-block mt-1">Tài khoản hiện tại</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="text-center">Chưa có tài khoản nào</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal fade" id="updateAccountModal" tabindex="-1" aria-labelledby="updateAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" id="updateAccountForm">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="updateAccountModalLabel">Sửa tài khoản</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Tên đăng nhập</label>
+              <input type="text" name="username" id="update_username" class="form-control" required />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Họ</label>
+              <input type="text" name="last_name" id="update_last_name" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Tên</label>
+              <input type="text" name="first_name" id="update_first_name" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Số điện thoại</label>
+              <input type="text" name="phone" id="update_phone" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" id="update_email" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Quyền</label>
+              <select name="role" id="update_role" class="form-control">
+                <option value="employee">Nhân viên</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            <button type="submit" class="btn btn-primary">Cập nhật</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="resetPasswordForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="resetPasswordModalLabel">Đổi mật khẩu tài khoản</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+
+        <div class="modal-body">
+          <p>
+            Tài khoản: <strong id="reset_password_username"></strong>
+          </p>
+
+          <div class="mb-3">
+            <label class="form-label">Mật khẩu mới</label>
+            <input type="password" name="new_password" id="new_password" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Xác nhận mật khẩu</label>
+            <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+          </div>
+
+          <small class="text-muted">Mật khẩu mới phải có ít nhất 6 ký tự.</small>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">Lưu mật khẩu mới</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script_manage %}
+  <script>
+    $(document).ready(function () {
+      $('#dataTable').DataTable({
+        buttons: ['copy', 'excel', 'pdf', 'print'],
+        layout: { topStart: 'buttons' },
+        paging: true,
+        ordering: true,
+        responsive: true
+      })
+    })
+    
+    document.querySelectorAll('.edit-account-btn').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const id = this.getAttribute('data-id')
+        const username = this.getAttribute('data-username')
+        const firstName = this.getAttribute('data-first_name')
+        const lastName = this.getAttribute('data-last_name')
+        const email = this.getAttribute('data-email')
+        const phone = this.getAttribute('data-phone')
+        const role = this.getAttribute('data-role')
+    
+        document.getElementById('update_username').value = username
+        document.getElementById('update_first_name').value = firstName
+        document.getElementById('update_last_name').value = lastName
+        document.getElementById('update_email').value = email
+        document.getElementById('update_phone').value = phone
+        document.getElementById('update_role').value = role
+        document.getElementById('updateAccountForm').action = `/accounts-manager/${id}/update/`
+      })
+    })
+
+    document.querySelectorAll('.reset-password-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const id = this.getAttribute('data-id')
+      const username = this.getAttribute('data-username')
+
+      document.getElementById('reset_password_username').innerText = username
+      document.getElementById('new_password').value = ''
+      document.getElementById('confirm_password').value = ''
+      document.getElementById('resetPasswordForm').action = `/accounts-manager/${id}/reset-password/`
+    })
+  })
+  </script>
+{% endblock %}

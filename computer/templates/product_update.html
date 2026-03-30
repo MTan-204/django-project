@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block manage %}
+      <div class="container d-flex justify-content-center pt-2">
+        <div class="col-md-5 border border-success border-3 rounded-3">            
+          <div class="p-2 d-flex justify-content-start align-items-center bg-success">
+              <img src="{% static 'images/tbsgroup.png'%}" width="30px" height="30px">
+              <div class="container-fluid"><h5 class="text-center text-white">CẬP NHẬT THÔNG TIN SẢN PHẨM</h5></div>
+          </div>
+        <form method="post" action="{% url 'product_update' products.id %}">
+            {% csrf_token %}
+            <table class="table table-success table-hover align-middle fs-6">                     
+              <tr>
+                  <td>Tên Sản Phẩm</td>                
+                  <td><input type="text" class="w-100" name="name" value="{{products.product.name}}" required/></td>
+              </tr>
+              <tr>
+                  <td>Hãng</td>                
+                  <td><input type="text" class="w-100" name="brand" value="{{products.product.brand}}" required/></td>
+              </tr>
+              <tr>
+                  <td>Loại</td>                
+                  <td>
+                      <select name="category" class="w-100">
+                      {% for c in categories %}
+                      <option value="{{c.id}}"
+                      {% if c.id == products.product.category.id %}selected{% endif %}>
+                      {{c.name}}
+                      </option>
+                      {% endfor %}
+                      </select>
+                  </td>
+              </tr>
+              <tr>
+                  <td>Đơn Vị</td>                
+                  <td>
+                      <select name="unit" class="w-100">
+                      {% for u in units %}
+                      <option value="{{u.id}}"{% if u.id == products.unit.id %}selected{% endif %}>
+                      {{u.name}}
+                      </option>
+                      {% endfor %}
+                      </select>
+                  </td>
+              </tr>
+              <tr>
+                  <td>Số Lượng</td>                
+                  <td><input type="text" class="w-100" name="stock" value="{{products.stock}}" required/></td>
+              </tr>
+              <tr>
+                  <td>Đơn Giá</td>                
+                  <td><input type="text" class="w-100" name="price" value="{{products.selling_price}}" required/></td>
+              </tr>
+              <tr>
+                  <td>Trạng Thái</td>                
+                  <td>
+                  <select class="w-100" name="is_active">
+                      <option value="True" {% if products.is_active %}selected{% endif %}>Đang bán</option>
+                      <option value="False" {% if not products.is_active %}selected{% endif %}>Ngừng bán</option>
+                  </select>
+                  </td>
+              </tr>
+          </table>  
+          <div class="d-flex justify-content-end align-items-center gap-2 pe-2">
+            <button type="submit" class="btn btn-success">Cập Nhật</button>
+            <a href="/product/manage"><button type="button" class="btn btn-secondary">Đóng</button></a>
+        </div> 
+        </form>
+      </div>
+    </div>
+
+{% endblock manage %}
