@@ -6,7 +6,7 @@
     <title>Đại Lý Bia Tân Tiến</title>
     <link rel="icon" type="image/png" href="{% static 'computer_table/img/favicon.ico' %}" />
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" />
-    <link rel="stylesheet" type="text/css" href="{% static 'DataTables/datatables.css' %}" />
+    {% comment %} <link rel="stylesheet" type="text/css" href="{% static 'DataTables/datatables.css' %}" /> {% endcomment %}
     <link rel="stylesheet" type="text/css" href="{% static 'DataTables/datatables.min.css' %}" />
     {% block link %}
 
@@ -133,7 +133,7 @@
     <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 
     <!-- Datatable -->
-    <script type="text/javascript" src="{% static 'DataTables/datatables.js' %}"></script>
+    {% comment %} <script type="text/javascript" src="{% static 'DataTables/datatables.js' %}"></script> {% endcomment %}
     <script type="text/javascript" src="{% static 'DataTables/datatables.min.js' %}"></script>
 
     {% block script_index %}
