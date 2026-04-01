@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 
 {% block nav_button %}
 
@@ -13,17 +13,17 @@
   <div class="row g-3 mb-4">
     <div class="col-md-4">
       <div class="alert alert-primary mb-0">
-        <strong>Tổng tiền bán:</strong> {{ total_purchase|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng tiền bán:</strong> {{ total_purchase|vnd }} VNĐ
       </div>
     </div>
     <div class="col-md-4">
       <div class="alert alert-success mb-0">
-        <strong>Tổng đã thu:</strong> {{ total_paid|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng đã thu:</strong> {{ total_paid|vnd }} VNĐ
       </div>
     </div>
     <div class="col-md-4">
       <div class="alert alert-danger mb-0">
-        <strong>Tổng nợ khách hàng:</strong> {{ total_debt|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng nợ khách hàng:</strong> {{ total_debt|vnd }} VNĐ
       </div>
     </div>
   </div>
@@ -50,11 +50,11 @@
         <td>{{ c.customer__phone }}</td>
         <td>{{ c.customer__address }}</td>
         <td>{{ c.invoice_count }}</td>
-        <td>{{ c.total_purchase|floatformat:0|intcomma }} VNĐ</td>
-        <td>{{ c.total_paid|floatformat:0|intcomma }} VNĐ</td>
+        <td>{{ c.total_purchase|vnd }} VNĐ</td>
+        <td>{{ c.total_paid|vnd }} VNĐ</td>
         <td>
           {% if c.total_debt > 0 %}
-            <span class="badge bg-danger">{{ c.total_debt|floatformat:0|intcomma }} VNĐ</span>
+            <span class="badge bg-danger">{{ c.total_debt|vnd }} VNĐ</span>
           {% else %}
             <span class="badge bg-success">0 VNĐ</span>
           {% endif %}

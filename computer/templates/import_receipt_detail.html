@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 {% block nav_button %}
   
 {% endblock %}
@@ -27,15 +27,15 @@
           <tr>
             <td>{{ d.product_variant.product.name }}</td>
             <td>{{ d.quantity }}</td>
-            <td>{{ d.price |floatformat:0|intcomma}}</td>
-            <td>{{ d.subtotal |floatformat:0|intcomma }}</td>
+            <td>{{ d.price |vnd}} VNĐ</td>
+            <td>{{ d.subtotal |vnd }}VNĐ</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
 
-    <h5>Tổng tiền: {{ receipt.total_amount |floatformat:0|intcomma }}</h5>
-    <p class="text-danger fw-bold">Còn nợ:{{ receipt.debt |floatformat:0|intcomma }}</p>
+    <h5>Tổng tiền: {{ receipt.total_amount |vnd }}VNĐ</h5>
+    <p class="text-danger fw-bold">Còn nợ:{{ receipt.debt |vnd}} VNĐ</p>
     {% if receipt.payment_status == 'paid' %}
       <button class="btn btn-primary" disabled style="opacity:0.5; cursor:not-allowed;">Thanh toán</button>
     {% elif receipt.status != 'confirmed' %}
@@ -56,8 +56,8 @@
       {% for p in payments %}
         <tr>
           <td>{{ p.date }}</td>
-          <td>{{ p.amount |floatformat:0|intcomma }}</td>
-          <td>{{ p.note |floatformat:0|intcomma }}</td>
+          <td>{{ p.amount |vnd}}VNĐ</td>
+          <td>{{ p.note |vnd }}VNĐ</td>
         </tr>
       {% endfor %}
     </table>
@@ -78,17 +78,17 @@
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Tổng tiền</label>
-            <input type="text" class="form-control" value="{{ receipt.total_amount|floatformat:0|intcomma }}" readonly>
+            <input type="text" class="form-control" value="{{ receipt.total_amount|vnd }}" readonly>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Đã thanh toán</label>
-            <input type="text" class="form-control" value="{{ receipt.paid_amount |floatformat:0|intcomma}}" readonly>
+            <input type="text" class="form-control" value="{{ receipt.paid_amount |vnd}}" readonly>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Còn nợ</label>
-            <input type="text" class="form-control" value="{{ receipt.debt |floatformat:0|intcomma}}" readonly>
+            <input type="text" class="form-control" value="{{ receipt.debt |vnd}}" readonly>
           </div>
 
           <div class="mb-3">

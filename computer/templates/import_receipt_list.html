@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 {% block nav_button %}
 
 {% endblock %}
@@ -9,17 +9,17 @@
   <div class="row mb-3">
     <div class="col-md-4">
       <div class="alert alert-primary mb-0">
-        <strong>Tổng tiền nhập:</strong> {{ total_import|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng tiền nhập:</strong> {{ total_import|vnd }} VNĐ
       </div>
     </div>
     <div class="col-md-4">
       <div class="alert alert-success mb-0">
-        <strong>Tổng đã thanh toán:</strong> {{ total_paid|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng đã thanh toán:</strong> {{ total_paid|vnd }} VNĐ
       </div>
     </div>
     <div class="col-md-4">
       <div class="alert alert-danger mb-0">
-        <strong>Tổng nợ hiện tại:</strong> {{ total_debt|floatformat:0|intcomma }} VNĐ
+        <strong>Tổng nợ hiện tại:</strong> {{ total_debt|vnd }} VNĐ
       </div>
     </div>
   </div>
@@ -60,9 +60,9 @@
                 ---
               {% endif %}
             </td>
-            <td>{{ r.total_amount|floatformat:0|intcomma }}</td>
-            <td>{{ r.paid_amount|floatformat:0|intcomma }}</td>
-            <td class="fw-bold text-danger">{{ r.debt|floatformat:0|intcomma }}</td>
+            <td>{{ r.total_amount|vnd }} VNĐ</td>
+            <td>{{ r.paid_amount|vnd  }} VNĐ</td>
+            <td class="fw-bold text-danger">{{ r.debt|vnd  }} VNĐ</td>
             <td>
               {% if r.status == 'draft' %}
                 <span class="badge bg-warning">Nháp</span>

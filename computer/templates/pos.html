@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 
 {% block nav_button %}
   
@@ -80,7 +80,7 @@
                       <span class="badge bg-success">{{ p.stock }}</span>
                     {% endif %}
                   </td>
-                  <td>{{ p.selling_price|floatformat:0|intcomma }} VNĐ</td>
+                  <td>{{ p.selling_price|vnd }} </td>
                   <td style="width: 110px;">
                     <form method="POST" action="{% url 'pos_add_to_cart' %}" class="d-flex gap-2">
                       {% csrf_token %}
@@ -136,7 +136,7 @@
                       <div class="text-danger small">Vượt tồn kho</div>
                     {% endif %}
                   </td>
-                  <td>{{ item.price|floatformat:0|intcomma }}</td>
+                  <td>{{ item.price|vnd }}</td>
                   <td style="width: 115px;">
                     <form method="POST" action="{% url 'pos_update_cart' item.variant_id %}" class="d-flex gap-1">
                       {% csrf_token %}
@@ -144,7 +144,7 @@
                       <button type="submit" class="btn btn-warning btn-sm">Lưu</button>
                     </form>
                   </td>
-                  <td>{{ item.subtotal|floatformat:0|intcomma }}</td>
+                  <td>{{ item.subtotal|vnd }}</td>
                   <td>
                     <a href="{% url 'pos_remove_from_cart' item.variant_id %}" class="btn btn-danger btn-sm">X</a>
                   </td>
@@ -166,7 +166,7 @@
           </div>
           <div class="d-flex justify-content-between">
             <strong>Tổng trước giảm:</strong>
-            <strong id="cart-total" data-total="{{ total_amount }}">{{ total_amount|floatformat:0|intcomma }} VNĐ</strong>
+            <strong id="cart-total" data-total="{{ total_amount }}">{{ total_amount|vnd }} VNĐ</strong>
           </div>
           <div class="d-flex justify-content-between">
             <strong>Giảm giá:</strong>
@@ -174,7 +174,7 @@
           </div>
           <div class="d-flex justify-content-between">
             <strong class="text-primary">Tổng sau giảm:</strong>
-            <strong id="final-total" class="text-primary">{{ total_amount|floatformat:0|intcomma }} VNĐ</strong>
+            <strong id="final-total" class="text-primary">{{ total_amount|vnd }} VNĐ</strong>
           </div>
         </div>
       </div>

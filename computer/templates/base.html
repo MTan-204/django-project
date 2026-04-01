@@ -1,4 +1,6 @@
+{% load humanize %}
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -80,10 +82,7 @@
             </div>
           {% endif %}
 
-          <div class="form-check form-switch text-white ms-2">
-            <input type="checkbox" class="form-check-input p-2" role="switch" id="flexSwitchCheckChecked" checked onclick="dark_mode()" />
-            <label class="form-check-label" for="flexSwitchCheckChecked">Dark/Light</label>
-          </div>
+          
 
           <span class="badge bg-light text-dark">
             {% if request.user.is_superuser %}Admin{% else %}Nhân viên{% endif %}

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 
 {% block nav_button %}
 
@@ -58,7 +58,7 @@
                 ---
               {% endif %}
             </td>
-            <td>{{ r.final_amount|floatformat:0|intcomma }} VNĐ</td>
+            <td>{{ r.final_amount|vnd }} VNĐ</td>
             <td>
               {% if r.status == 'draft' %}
                 <span class="badge bg-warning text-dark">Nháp</span>

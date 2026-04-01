@@ -7,9 +7,26 @@
               <img src="{% static 'images/tbsgroup.png'%}" width="30px" height="30px">
               <div class="container-fluid"><h5 class="text-center text-white">CẬP NHẬT THÔNG TIN SẢN PHẨM</h5></div>
           </div>
-        <form method="post" action="{% url 'product_update' products.id %}">
+        <form method="post" action="{% url 'product_update' products.id %}" enctype="multipart/form-data">
             {% csrf_token %}
-            <table class="table table-success table-hover align-middle fs-6">                     
+            <table class="table table-success table-hover align-middle fs-6">
+                <tr>
+                    <td>Ảnh hiện tại</td>
+                    <td>
+                        {% if products.product.image %}
+                            <img src="{{ products.product.image.url }}" alt="{{ products.product.name }}" width="100" height="100" style="object-fit: cover; border-radius: 8px;">
+                        {% else %}
+                            <span class="text-muted">Chưa có ảnh</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Ảnh mới</td>
+                    <td>
+                        <input type="file" class="w-100" name="image" accept="image/*">
+                    </td>
+                </tr>                     
               <tr>
                   <td>Tên Sản Phẩm</td>                
                   <td><input type="text" class="w-100" name="name" value="{{products.product.name}}" required/></td>

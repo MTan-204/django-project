@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 {% block nav_button %}          
   
 {% endblock nav_button %}
@@ -39,13 +39,19 @@
           <tbody>
             {% for p in products %}
             <tr class="{% if p.stock <= low_stock_threshold %}table-danger{% endif %}">
-                  <td></td>
+                  <td>
+                    {% if p.product.image %}
+                      <img src="{{ p.product.image.url }}" alt="{{ p.product.name }}" width="70" height="70" style="object-fit: cover; border-radius: 8px;">
+                    {% else %}
+                      <span class="text-muted">Không có ảnh</span>
+                    {% endif %}
+                  </td>
                   <td>{{p.product.name}}</td>
                   <td>{{p.product.brand}}</td>
                   <td>{{p.product.category.name|default:"-"}}</td>
                   <td>{{p.unit.name}}</td>
                   <td>{{p.stock}}</td>
-                  <td>{{p.selling_price|intcomma}} đ</td>
+                  <td>{{p.selling_price|vnd}} đ</td>
                   <td>
                   {% if p.is_active %}
                   <span class="badge bg-success">Đang bán</span>
@@ -79,12 +85,16 @@
               </div>
               
               <div class="modal-body p-0">
-                <form method="post" action="">
+                <form method="post" action="" enctype="multipart/form-data">
                   {% csrf_token %}
                   <table class="table table-success table-hover align-middle fs-6">                     
                     <tr>
                         <td>Tên Sản Phẩm</td>                
                         <td><input type="text" class="w-100" name="name"/></td>
+                    </tr>
+                    <tr>
+                        <td>Ảnh sản phẩm</td>
+                        <td><input type="file" class="w-100" name="image" accept="image/*"></td>
                     </tr>
                     <tr>
                         <td>Hãng</td>                

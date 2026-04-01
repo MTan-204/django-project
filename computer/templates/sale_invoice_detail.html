@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load humanize %}
+{% load currency_filters %}
 
 {% block nav_button %}
 
@@ -102,8 +102,8 @@
           <tr>
             <td>{{ d.product_variant.product.name }}</td>
             <td>{{ d.quantity }}</td>
-            <td>{{ d.price|floatformat:0|intcomma }} VNĐ</td>
-            <td>{{ d.subtotal|floatformat:0|intcomma }} VNĐ</td>
+            <td>{{ d.price|vnd }} VNĐ</td>
+            <td>{{ d.subtotal|vnd }} VNĐ</td>
           </tr>
         {% empty %}
           <tr>
@@ -116,7 +116,7 @@
             <strong>Tổng trước giảm</strong>
           </td>
           <td>
-            <strong>{{ invoice.total_amount|floatformat:0|intcomma }} VNĐ</strong>
+            <strong>{{ invoice.total_amount|vnd }} VNĐ</strong>
           </td>
         </tr>
 
@@ -143,7 +143,7 @@
             {% if invoice.discount_type == 'percent' %}
               {{ invoice.discount_value|floatformat:0 }}%
             {% elif invoice.discount_type == 'amount' %}
-              {{ invoice.discount_value|floatformat:0|intcomma }} VNĐ
+              {{ invoice.discount_value|vnd }} VNĐ
             {% else %}
               0
             {% endif %}
@@ -154,7 +154,7 @@
           <td colspan="3" class="text-end">
             <strong>Số tiền giảm</strong>
           </td>
-          <td>{{ invoice.discount_amount|floatformat:0|intcomma }} VNĐ</td>
+          <td>{{ invoice.discount_amount|vnd }} VNĐ</td>
         </tr>
 
         <tr class="table-primary">
@@ -162,7 +162,7 @@
             <strong>Tổng sau giảm</strong>
           </td>
           <td>
-            <strong>{{ invoice.final_amount|floatformat:0|intcomma }} VNĐ</strong>
+            <strong>{{ invoice.final_amount|vnd }} VNĐ</strong>
           </td>
         </tr>
 
@@ -170,7 +170,7 @@
           <td colspan="3" class="text-end">
             <strong>Đã thanh toán</strong>
           </td>
-          <td>{{ invoice.paid_amount|floatformat:0|intcomma }} VNĐ</td>
+          <td>{{ invoice.paid_amount|vnd }} VNĐ</td>
         </tr>
 
         <tr class="table-danger">
@@ -178,7 +178,7 @@
             <strong>Còn nợ</strong>
           </td>
           <td>
-            <strong>{{ invoice.debt|floatformat:0|intcomma }} VNĐ</strong>
+            <strong>{{ invoice.debt|vnd }} VNĐ</strong>
           </td>
         </tr>
       </tbody>
@@ -211,7 +211,7 @@
         {% for p in payments %}
           <tr>
             <td>{{ p.date }}</td>
-            <td>{{ p.amount|floatformat:0|intcomma }} VNĐ</td>
+            <td>{{ p.amount|vnd }} VNĐ</td>
             <td>{{ p.note }}</td>
           </tr>
         {% empty %}
@@ -236,27 +236,27 @@
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label">Tổng trước giảm</label>
-              <input type="text" class="form-control" value="{{ invoice.total_amount|floatformat:0|intcomma }} VNĐ" readonly />
+              <input type="text" class="form-control" value="{{ invoice.total_amount|vnd}} VNĐ" readonly />
             </div>
 
             <div class="mb-3">
               <label class="form-label">Giảm giá</label>
-              <input type="text" class="form-control" value="{{ invoice.discount_amount|floatformat:0|intcomma }} VNĐ" readonly />
+              <input type="text" class="form-control" value="{{ invoice.discount_amount|vnd }} VNĐ" readonly />
             </div>
 
             <div class="mb-3">
               <label class="form-label">Tổng sau giảm</label>
-              <input type="text" class="form-control" value="{{ invoice.final_amount|floatformat:0|intcomma }} VNĐ" readonly />
+              <input type="text" class="form-control" value="{{ invoice.final_amount|vnd }} VNĐ" readonly />
             </div>
 
             <div class="mb-3">
               <label class="form-label">Đã thanh toán</label>
-              <input type="text" class="form-control" value="{{ invoice.paid_amount|floatformat:0|intcomma }} VNĐ" readonly />
+              <input type="text" class="form-control" value="{{ invoice.paid_amount|vnd }} VNĐ" readonly />
             </div>
 
             <div class="mb-3">
               <label class="form-label">Còn nợ</label>
-              <input type="text" class="form-control" value="{{ invoice.debt|floatformat:0|intcomma }} VNĐ" readonly />
+              <input type="text" class="form-control" value="{{ invoice.debt|vnd }} VNĐ" readonly />
             </div>
 
             <div class="mb-3">

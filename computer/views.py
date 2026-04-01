@@ -19,9 +19,11 @@ from functools import wraps
 from django.contrib.auth.models import User
 class SiteLoginView(LoginView):
      template_name = 'login.html'
+     def get_success_url(self):
+        return reverse('pos')
 def logout_view(request):
     logout(request)
-    return redirect('product_list')
+    return redirect('login')
 
 @login_not_required
 def product_list(request):
@@ -73,11 +75,13 @@ def product_manage(request):
         category = request.POST['category']
         unit_id = request.POST['unit']
         selling_price = request.POST['selling_price']
+        image = request.FILES.get('image')
 
         product = Product.objects.create(
             name=name,
             category_id=category,
-            brand=brand
+            brand=brand,
+            image=image
         )
 
         ProductVariant.objects.create(
@@ -88,7 +92,7 @@ def product_manage(request):
         )
 
         messages.success(request, 'Thêm sản phẩm thành công!')
-        return redirect('/product/manage')
+        return redirect('product_manage')
 
     return render(request, 'product_manage.html', {
         'products': products,
@@ -98,34 +102,41 @@ def product_manage(request):
         'low_stock_count': low_stock_count,
         'stock_filter': stock_filter,
     })
-
+@admin_required
 def product_update(request, id):
     variant = get_object_or_404(ProductVariant, id=id)
-    if request.method == "POST":
 
+    if request.method == "POST":
         variant.product.name = request.POST.get("name")
         variant.product.brand = request.POST.get("brand")
         variant.product.category_id = request.POST.get("category")
 
+        new_image = request.FILES.get("image")
+        if new_image:
+            variant.product.image = new_image
+
         variant.unit_id = request.POST.get("unit")
         variant.stock = request.POST.get("stock")
         variant.selling_price = request.POST.get("price")
-        variant.is_active = not variant.is_active
+
+        is_active_value = request.POST.get("is_active")
+        variant.is_active = True if is_active_value == "True" else False
+
         variant.product.save()
         variant.save()
 
-        messages.success(request,"Cập nhật thành công")
-        return redirect("/product/manage")
+        messages.success(request, "Cập nhật thành công")
+        return redirect("product_manage")
 
     categories = Category.objects.all()
     units = Unit.objects.all()
 
-    return render(request,"product_update.html",{
+    return render(request, "product_update.html", {
         "products": variant,
         "categories": categories,
         "units": units
     })
-
+@admin_required
 def product_delete(request,id):
     variant = get_object_or_404(ProductVariant, id=id)
     variant.is_active = False
@@ -133,7 +144,7 @@ def product_delete(request,id):
     messages.success(request,'Đã ngừng bán sản phẩm!')
     return redirect('/product/manage')
 
-
+@admin_required
 def add_category(request):
     if request.method == "POST":
         data = json.loads(request.body)
@@ -143,7 +154,7 @@ def add_category(request):
         if name:
             Category.objects.create(name=name)
             return JsonResponse({"status": "ok"})
-
+@admin_required
 def delete_category(request, id):
 
     category = get_object_or_404(Category, id=id)
@@ -155,7 +166,7 @@ def delete_category(request, id):
     category.delete()
 
     return redirect('/product/manage')
-
+@admin_required
 def add_unit(request):
     if request.method == "POST":
         data = json.loads(request.body)
@@ -165,7 +176,7 @@ def add_unit(request):
         if name:
             Unit.objects.create(name=name)
             return JsonResponse({"status": "ok"})
-
+@admin_required
 def delete_unit(request, id):
     unit = get_object_or_404(Unit, id=id)
     if ProductVariant.objects.filter(unit=unit).exists():
@@ -173,7 +184,7 @@ def delete_unit(request, id):
         return redirect('/product/manage')
     unit.delete()
     return redirect('/product/manage')
-
+@admin_required
 def supplier_manage(request):
     suppliers = Supplier.objects.all()
     if request.method == "POST":
@@ -190,14 +201,14 @@ def supplier_manage(request):
     return render(request,'supplier.html',{
         'suppliers': suppliers
     })
-
+@admin_required
 def delete_supplier(request,id):
     supplier = get_object_or_404(Supplier,id=id)
     supplier.is_active = False
     supplier.save()
     messages.success(request,"Nhà cung cấp đã ngừng hoạt động")
     return redirect('/supplier/')
-
+@admin_required
 def update_supplier(request, id):
     supplier = Supplier.objects.get(id=id)
 
@@ -214,7 +225,7 @@ def update_supplier(request, id):
     return render(request, 'supplier_update.html', {
         'supplier': supplier
     })
-
+@admin_required
 def import_receipt_create(request):
 
     if request.method == 'POST':
@@ -246,7 +257,7 @@ def import_receipt_create(request):
         'form': form,
         'formset': formset
     })
-
+@admin_required
 def import_receipt_print(request, pk):
     receipt = get_object_or_404(
         ImportReceipt.objects.select_related('supplier','created_by'),
@@ -265,6 +276,7 @@ def import_receipt_print(request, pk):
         'details': details,
         'payments': payments
     })
+@admin_required
 def import_receipt_list(request):
     receipts = ImportReceipt.objects.select_related('supplier').all().order_by('-id')
 
@@ -297,7 +309,7 @@ def import_receipt_list(request):
         'total_paid': summary['total_paid'],
         'total_debt': summary['total_debt'],
     })
-
+@admin_required
 def import_receipt_detail(request, pk):
 
     receipt = ImportReceipt.objects.get(pk=pk)
@@ -311,7 +323,7 @@ def import_receipt_detail(request, pk):
         "details":details,
         "payments":payments
     })
-
+@admin_required
 def delete_import_receipt(request, pk):
     receipt = get_object_or_404(ImportReceipt, pk=pk)
 
@@ -326,7 +338,7 @@ def delete_import_receipt(request, pk):
     receipt.delete()
     messages.success(request, f"Đã xóa phiếu nhập #{pk} thành công.")
     return redirect('import_receipt_list')
-
+@admin_required
 def get_product_stock(request):
 
     product_id = request.GET.get('product_id')
@@ -336,7 +348,7 @@ def get_product_stock(request):
     return JsonResponse({
         'stock': product.stock
     })
-
+@admin_required
 def confirm_receipt(request, pk):
 
     receipt = get_object_or_404(ImportReceipt, pk=pk)
@@ -348,7 +360,7 @@ def confirm_receipt(request, pk):
         messages.error(request, str(e))
 
     return redirect('import_receipt_detail', pk=pk)
-
+@admin_required
 def payment_create(request, receipt_id):
     receipt = get_object_or_404(ImportReceipt, pk=receipt_id)
 
@@ -382,7 +394,7 @@ def payment_create(request, receipt_id):
             messages.error(request, f"Có lỗi xảy ra: {str(e)}")
 
     return redirect("import_receipt_detail", pk=receipt_id)
-
+@admin_required
 def supplier_debt(request):
 
     suppliers = Supplier.objects.annotate(
@@ -487,7 +499,7 @@ def sale_invoice_detail(request, pk):
         'payments': payments
     })
 
-
+@admin_required
 def confirm_sale_invoice(request, pk):
     invoice = get_object_or_404(SaleInvoice, pk=pk)
 
@@ -672,7 +684,7 @@ from .models import (
     ImportReceipt, SaleInvoice
 )
 
-@login_required
+
 @admin_required
 def dashboard(request):
     today = timezone.localdate()
@@ -767,7 +779,7 @@ def dashboard(request):
         'recent_sales': recent_sales,
         'recent_receipts': recent_receipts,
     })
-
+@admin_required
 def customer_debt_list(request):
     money_field = DecimalField(max_digits=12, decimal_places=2)
     money_zero = Value(Decimal('0.00'), output_field=money_field)
@@ -879,9 +891,7 @@ def customer_debt_detail(request, customer_id):
         'total_paid': summary['total_paid'],
         'total_debt': summary['total_debt'],
     })
-
-
-
+@admin_required
 def sales_statistics(request):
     today = timezone.localdate()
     current_year = today.year
@@ -891,141 +901,127 @@ def sales_statistics(request):
     month = request.GET.get('month', '').strip()
     year = request.GET.get('year', '').strip()
 
-    money_field = DecimalField(max_digits=12, decimal_places=2)
-    money_zero = Value(Decimal('0.00'), output_field=money_field)
+    confirmed_sales = SaleInvoice.objects.filter(status='confirmed').select_related('customer')
 
-    confirmed_sales = SaleInvoice.objects.filter(status='confirmed')
-
-    # Lọc theo khoảng ngày
     if date_from:
         confirmed_sales = confirmed_sales.filter(created_at__date__gte=date_from)
-
     if date_to:
         confirmed_sales = confirmed_sales.filter(created_at__date__lte=date_to)
-
-    # Lọc theo tháng / năm
     if year:
         confirmed_sales = confirmed_sales.filter(created_at__year=year)
-
     if month:
         confirmed_sales = confirmed_sales.filter(created_at__month=month)
 
-    summary = confirmed_sales.aggregate(
-        total_revenue=Coalesce(
-            Sum('total_amount'),
-            money_zero,
-            output_field=money_field
-        ),
-        total_paid=Coalesce(
-            Sum('paid_amount'),
-            money_zero,
-            output_field=money_field
-        ),
-        total_debt=Coalesce(
-            Sum(F('total_amount') - F('paid_amount')),
-            money_zero,
-            output_field=money_field
-        ),
-        total_invoices=Count('id')
-    )
+    sales = list(confirmed_sales)
 
-    revenue_by_day = (
-        confirmed_sales
-        .annotate(day=TruncDate('created_at'))
-        .values('day')
-        .annotate(
-            revenue=Coalesce(
-                Sum('total_amount'),
-                money_zero,
-                output_field=money_field
-            ),
-            invoice_count=Count('id')
-        )
-        .order_by('-day')[:31]
-    )
+    total_revenue = Decimal('0.00')
+    total_paid = Decimal('0.00')
+    total_debt = Decimal('0.00')
+    total_invoices = len(sales)
 
-    revenue_by_month = (
-        confirmed_sales
-        .annotate(month_value=TruncMonth('created_at'))
-        .values('month_value')
-        .annotate(
-            revenue=Coalesce(
-                Sum('total_amount'),
-                money_zero,
-                output_field=money_field
-            ),
-            invoice_count=Count('id')
-        )
-        .order_by('-month_value')
-    )
+    revenue_by_day_map = {}
+    revenue_by_month_map = {}
+    top_customers_map = {}
 
-    top_selling_products = (
-        SaleInvoiceDetail.objects
-        .filter(invoice__in=confirmed_sales)
-        .values(
-            product_name=F('product_variant__product__name'),
-            unit_name=F('product_variant__unit__name'),
-        )
-        .annotate(
-            total_sold=Coalesce(Sum('quantity'), 0),
-            total_revenue=Coalesce(
-                Sum('subtotal'),
-                money_zero,
-                output_field=money_field
-            )
-        )
-        .order_by('-total_sold', '-total_revenue')[:10]
-    )
+    for sale in sales:
+        final_amount = sale.final_amount or Decimal('0.00')
+        paid_amount = sale.paid_amount or Decimal('0.00')
+        debt_amount = final_amount - paid_amount
 
-    top_customers = (
-        confirmed_sales
-        .filter(customer__isnull=False)
-        .values(
-            'customer_id',
-            'customer__name',
-            'customer__phone',
-        )
-        .annotate(
-            invoice_count=Count('id'),
-            total_purchase=Coalesce(
-                Sum('total_amount'),
-                money_zero,
-                output_field=money_field
-            ),
-            total_paid=Coalesce(
-                Sum('paid_amount'),
-                money_zero,
-                output_field=money_field
-            ),
-            total_debt=Coalesce(
-                Sum(F('total_amount') - F('paid_amount')),
-                money_zero,
-                output_field=money_field
-            )
-        )
-        .order_by('-total_purchase')[:10]
-    )
+        total_revenue += final_amount
+        total_paid += paid_amount
+        total_debt += debt_amount
+
+        created_local = timezone.localtime(sale.created_at) if timezone.is_aware(sale.created_at) else sale.created_at
+        day_key = created_local.date()
+        month_key = day_key.replace(day=1)
+
+        if day_key not in revenue_by_day_map:
+            revenue_by_day_map[day_key] = {
+                'day': day_key,
+                'invoice_count': 0,
+                'revenue': Decimal('0.00'),
+            }
+        revenue_by_day_map[day_key]['invoice_count'] += 1
+        revenue_by_day_map[day_key]['revenue'] += final_amount
+
+        if month_key not in revenue_by_month_map:
+            revenue_by_month_map[month_key] = {
+                'month_value': month_key,
+                'invoice_count': 0,
+                'revenue': Decimal('0.00'),
+            }
+        revenue_by_month_map[month_key]['invoice_count'] += 1
+        revenue_by_month_map[month_key]['revenue'] += final_amount
+
+        if sale.customer_id:
+            customer_key = sale.customer_id
+            if customer_key not in top_customers_map:
+                top_customers_map[customer_key] = {
+                    'customer_id': sale.customer_id,
+                    'customer__name': sale.customer.name if sale.customer else 'Khách hàng đã xóa',
+                    'customer__phone': sale.customer.phone if sale.customer else '',
+                    'invoice_count': 0,
+                    'total_purchase': Decimal('0.00'),
+                    'total_paid': Decimal('0.00'),
+                    'total_debt': Decimal('0.00'),
+                }
+            top_customers_map[customer_key]['invoice_count'] += 1
+            top_customers_map[customer_key]['total_purchase'] += final_amount
+            top_customers_map[customer_key]['total_paid'] += paid_amount
+            top_customers_map[customer_key]['total_debt'] += debt_amount
+
+    revenue_by_day = sorted(revenue_by_day_map.values(), key=lambda x: x['day'], reverse=True)[:15]
+    revenue_by_month = sorted(revenue_by_month_map.values(), key=lambda x: x['month_value'], reverse=True)
+    top_customers = sorted(top_customers_map.values(), key=lambda x: x['total_purchase'], reverse=True)[:10]
+
+    detail_qs = SaleInvoiceDetail.objects.filter(invoice__status='confirmed')
+    if date_from:
+        detail_qs = detail_qs.filter(invoice__created_at__date__gte=date_from)
+    if date_to:
+        detail_qs = detail_qs.filter(invoice__created_at__date__lte=date_to)
+    if year:
+        detail_qs = detail_qs.filter(invoice__created_at__year=year)
+    if month:
+        detail_qs = detail_qs.filter(invoice__created_at__month=month)
+
+    product_map = {}
+    for detail in detail_qs.select_related('product_variant__product', 'product_variant__unit'):
+        key = detail.product_variant_id
+        if key not in product_map:
+            product_map[key] = {
+                'product_name': detail.product_variant.product.name,
+                'unit_name': detail.product_variant.unit.name,
+                'total_sold': 0,
+                'total_revenue': Decimal('0.00'),
+            }
+        product_map[key]['total_sold'] += detail.quantity
+        product_map[key]['total_revenue'] += detail.subtotal or Decimal('0.00')
+
+    top_selling_products = sorted(
+        product_map.values(),
+        key=lambda x: (x['total_sold'], x['total_revenue']),
+        reverse=True,
+    )[:10]
 
     years = range(current_year - 5, current_year + 1)
 
     return render(request, 'sales_statistics.html', {
-        'total_revenue': summary['total_revenue'],
-        'total_paid': summary['total_paid'],
-        'total_debt': summary['total_debt'],
-        'total_invoices': summary['total_invoices'],
+        'total_revenue': total_revenue,
+        'total_paid': total_paid,
+        'total_debt': total_debt,
+        'total_invoices': total_invoices,
         'revenue_by_day': revenue_by_day,
         'revenue_by_month': revenue_by_month,
         'top_selling_products': top_selling_products,
         'top_customers': top_customers,
         'current_year': current_year,
-
         'date_from': date_from,
         'date_to': date_to,
         'month': month,
         'year': year,
         'years': years,
     })
-
 def _get_pos_cart(request):
     return request.session.get('pos_cart', {})
 

@@ -44,14 +44,31 @@
             </div>
 
             <div class="col-md-2">
-              <label class="form-label">Số điện thoại</label>
-              <input type="text" name="phone" class="form-control" />
-            </div>
+                <label class="form-label">Số điện thoại</label>
+                <input
+                  type="text"
+                  name="phone"
+                  id="create_phone"
+                  class="form-control"
+                  inputmode="numeric"
+                  maxlength="10"
+                  pattern="^0(2|3|4|5|6|7|8|9)\d{8}$"
+                  placeholder="VD: 0912345678"
+                  title="Số điện thoại phải gồm 10 số"
+                />
+              </div>
 
-            <div class="col-md-3">
-              <label class="form-label">Email</label>
-              <input type="email" name="email" class="form-control" />
-            </div>
+              <div class="col-md-3">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  id="create_email"
+                  class="form-control"
+                  maxlength="254"
+                  placeholder="VD: ten@email.com"
+                />
+              </div>
 
             <div class="col-md-3">
               <label class="form-label">Quyền</label>
@@ -197,14 +214,30 @@
 
             <div class="mb-3">
               <label class="form-label">Số điện thoại</label>
-              <input type="text" name="phone" id="update_phone" class="form-control" />
+              <input
+                type="text"
+                name="phone"
+                id="update_phone"
+                class="form-control"
+                inputmode="numeric"
+                maxlength="10"
+                pattern="^0(2|3|4|5|6|7|8|9)\d{8}$"
+                placeholder="VD: 0912345678"
+                title="Số điện thoại phải gồm 10 số"
+              />
             </div>
 
             <div class="mb-3">
               <label class="form-label">Email</label>
-              <input type="email" name="email" id="update_email" class="form-control" />
+              <input
+                type="email"
+                name="email"
+                id="update_email"
+                class="form-control"
+                maxlength="254"
+                placeholder="VD: ten@email.com"
+              />
             </div>
-
             <div class="mb-3">
               <label class="form-label">Quyền</label>
               <select name="role" id="update_role" class="form-control">
