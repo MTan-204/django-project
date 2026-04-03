@@ -18,8 +18,34 @@
         </div>
       {% endfor %}
     {% endif %}
+  <div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Từ ngày</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
 
-    <a href="{% url 'sale_invoice_create' %}" class="btn btn-primary mb-3">+ Tạo hóa đơn bán</a>
+      <div class="col-md-3">
+        <label class="form-label">Đến ngày</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
+
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary text-nowrap px-4 btn-action">
+          Lọc
+        </button>
+        <a href="{% url 'sale_invoice_list' %}" class="btn btn-secondary text-nowrap px-4 btn-action">
+          Xóa lọc
+        </a>
+        <a href="{% url 'sale_invoice_create' %}" class="btn btn-success text-nowrap px-4 btn-action">
+          + Tạo hóa đơn bán
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+   
 
     <table class="table table-bordered table-striped" id="dataTable">
       <thead>

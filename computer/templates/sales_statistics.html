@@ -21,36 +21,6 @@
           <label class="form-label">Đến ngày</label>
           <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
         </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Tháng</label>
-          <select name="month" class="form-control">
-            <option value="">-- Tất cả --</option>
-            <option value="1" {% if month == '1' %}selected{% endif %}>1</option>
-            <option value="2" {% if month == '2' %}selected{% endif %}>2</option>
-            <option value="3" {% if month == '3' %}selected{% endif %}>3</option>
-            <option value="4" {% if month == '4' %}selected{% endif %}>4</option>
-            <option value="5" {% if month == '5' %}selected{% endif %}>5</option>
-            <option value="6" {% if month == '6' %}selected{% endif %}>6</option>
-            <option value="7" {% if month == '7' %}selected{% endif %}>7</option>
-            <option value="8" {% if month == '8' %}selected{% endif %}>8</option>
-            <option value="9" {% if month == '9' %}selected{% endif %}>9</option>
-            <option value="10" {% if month == '10' %}selected{% endif %}>10</option>
-            <option value="11" {% if month == '11' %}selected{% endif %}>11</option>
-            <option value="12" {% if month == '12' %}selected{% endif %}>12</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Năm</label>
-          <select name="year" class="form-control">
-            <option value="">-- Tất cả --</option>
-            {% for y in years %}
-              <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
         <div class="col-md-2 d-flex gap-2">
           <button type="submit" class="btn btn-primary w-100">Lọc</button>
           <a href="{% url 'sales_statistics' %}" class="btn btn-secondary w-100">Xóa lọc</a>
@@ -120,7 +90,9 @@
                   <td>{{ item.day|date:"d/m/Y" }}</td>
                   <td>{{ item.invoice_count }}</td>
                   <td>{{ item.revenue|vnd }} VNĐ</td>
-                  <td></td>
+                  <td><a href="{% url 'sale_invoice_list' %}?date_from={{ item.day|date:'Y-m-d' }}&date_to={{ item.day|date:'Y-m-d' }}">
+                    Xem hóa đơn
+                  </a></td>
                 </tr>
                 {% empty %}
                 <tr>

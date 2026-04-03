@@ -17,10 +17,14 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from functools import wraps
 from django.contrib.auth.models import User
+from datetime import datetime, time
 class SiteLoginView(LoginView):
      template_name = 'login.html'
      def get_success_url(self):
         return reverse('pos')
+     def form_invalid(self, form):
+        messages.error(self.request, "Banh rồi !!!")
+        return super().form_invalid(form)
 def logout_view(request):
     logout(request)
     return redirect('login')
@@ -280,6 +284,37 @@ def import_receipt_print(request, pk):
 def import_receipt_list(request):
     receipts = ImportReceipt.objects.select_related('supplier').all().order_by('-id')
 
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    def parse_html_date(date_str):
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return None
+
+    parsed_date_from = parse_html_date(date_from)
+    parsed_date_to = parse_html_date(date_to)
+
+    if parsed_date_from and parsed_date_to and parsed_date_from > parsed_date_to:
+        parsed_date_from, parsed_date_to = parsed_date_to, parsed_date_from
+        date_from, date_to = date_to, date_from
+
+    def make_start_datetime(date_obj):
+        dt = datetime.combine(date_obj, time.min)
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+
+    def make_end_datetime(date_obj):
+        dt = datetime.combine(date_obj, time.max)
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+
+    if parsed_date_from:
+        invoices = invoices.filter(created_at__gte=make_start_datetime(parsed_date_from))
+
+    if parsed_date_to:
+        invoices = invoices.filter(created_at__lte=make_end_datetime(parsed_date_to))
     summary = receipts.aggregate(
         total_import=Coalesce(
         Sum('total_amount'),
@@ -308,6 +343,9 @@ def import_receipt_list(request):
         'total_import': summary['total_import'],
         'total_paid': summary['total_paid'],
         'total_debt': summary['total_debt'],
+        'date_from': date_from,
+        'date_to': date_to,
+        
     })
 @admin_required
 def import_receipt_detail(request, pk):
@@ -411,10 +449,50 @@ def supplier_debt(request):
         'suppliers': suppliers
     })
 
+from datetime import datetime
+
+from datetime import datetime, time
+from django.utils import timezone
+
 def sale_invoice_list(request):
-    invoices = SaleInvoice.objects.select_related('customer').all().order_by('-id')
+    invoices = SaleInvoice.objects.select_related('customer', 'created_by').all().order_by('-id')
+
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    def parse_html_date(date_str):
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return None
+
+    parsed_date_from = parse_html_date(date_from)
+    parsed_date_to = parse_html_date(date_to)
+
+    if parsed_date_from and parsed_date_to and parsed_date_from > parsed_date_to:
+        parsed_date_from, parsed_date_to = parsed_date_to, parsed_date_from
+        date_from, date_to = date_to, date_from
+
+    def make_start_datetime(date_obj):
+        dt = datetime.combine(date_obj, time.min)
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+
+    def make_end_datetime(date_obj):
+        dt = datetime.combine(date_obj, time.max)
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+
+    if parsed_date_from:
+        invoices = invoices.filter(created_at__gte=make_start_datetime(parsed_date_from))
+
+    if parsed_date_to:
+        invoices = invoices.filter(created_at__lte=make_end_datetime(parsed_date_to))
+
     return render(request, 'sale_invoice_list.html', {
-        'invoices': invoices
+        'invoices': invoices,
+        'date_from': date_from,
+        'date_to': date_to,
     })
 
 def sale_invoice_print(request, pk):
@@ -901,16 +979,53 @@ def sales_statistics(request):
     month = request.GET.get('month', '').strip()
     year = request.GET.get('year', '').strip()
 
-    confirmed_sales = SaleInvoice.objects.filter(status='confirmed').select_related('customer')
+    def parse_html_date(date_str):
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return None
 
-    if date_from:
-        confirmed_sales = confirmed_sales.filter(created_at__date__gte=date_from)
-    if date_to:
-        confirmed_sales = confirmed_sales.filter(created_at__date__lte=date_to)
-    if year:
-        confirmed_sales = confirmed_sales.filter(created_at__year=year)
-    if month:
-        confirmed_sales = confirmed_sales.filter(created_at__month=month)
+    parsed_date_from = parse_html_date(date_from)
+    parsed_date_to = parse_html_date(date_to)
+
+    try:
+        month_int = int(month) if month else None
+    except ValueError:
+        month_int = None
+
+    try:
+        year_int = int(year) if year else None
+    except ValueError:
+        year_int = None
+
+    def make_aware_start(date_obj):
+        dt = datetime.combine(date_obj, time.min)
+        return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+    def make_aware_end(date_obj):
+        dt = datetime.combine(date_obj, time.max)
+        return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+    def apply_invoice_filters(queryset):
+        # Nếu có chọn khoảng ngày thì ưu tiên lọc theo ngày
+        if parsed_date_from or parsed_date_to:
+            if parsed_date_from:
+                queryset = queryset.filter(created_at__gte=make_aware_start(parsed_date_from))
+            if parsed_date_to:
+                queryset = queryset.filter(created_at__lte=make_aware_end(parsed_date_to))
+        else:
+            # Chỉ dùng tháng/năm khi không lọc theo khoảng ngày
+            if year_int:
+                queryset = queryset.filter(created_at__year=year_int)
+            if month_int:
+                queryset = queryset.filter(created_at__month=month_int)
+
+        return queryset
+
+    confirmed_sales = SaleInvoice.objects.filter(status='confirmed').select_related('customer')
+    confirmed_sales = apply_invoice_filters(confirmed_sales)
 
     sales = list(confirmed_sales)
 
@@ -966,27 +1081,49 @@ def sales_statistics(request):
                     'total_paid': Decimal('0.00'),
                     'total_debt': Decimal('0.00'),
                 }
+
             top_customers_map[customer_key]['invoice_count'] += 1
             top_customers_map[customer_key]['total_purchase'] += final_amount
             top_customers_map[customer_key]['total_paid'] += paid_amount
             top_customers_map[customer_key]['total_debt'] += debt_amount
 
-    revenue_by_day = sorted(revenue_by_day_map.values(), key=lambda x: x['day'], reverse=True)[:15]
-    revenue_by_month = sorted(revenue_by_month_map.values(), key=lambda x: x['month_value'], reverse=True)
-    top_customers = sorted(top_customers_map.values(), key=lambda x: x['total_purchase'], reverse=True)[:10]
+    revenue_by_day = sorted(
+        revenue_by_day_map.values(),
+        key=lambda x: x['day'],
+        reverse=True
+    )[:15]
 
-    detail_qs = SaleInvoiceDetail.objects.filter(invoice__status='confirmed')
-    if date_from:
-        detail_qs = detail_qs.filter(invoice__created_at__date__gte=date_from)
-    if date_to:
-        detail_qs = detail_qs.filter(invoice__created_at__date__lte=date_to)
-    if year:
-        detail_qs = detail_qs.filter(invoice__created_at__year=year)
-    if month:
-        detail_qs = detail_qs.filter(invoice__created_at__month=month)
+    revenue_by_month = sorted(
+        revenue_by_month_map.values(),
+        key=lambda x: x['month_value'],
+        reverse=True
+    )
+
+    top_customers = sorted(
+        top_customers_map.values(),
+        key=lambda x: x['total_purchase'],
+        reverse=True
+    )[:10]
+
+    detail_qs = SaleInvoiceDetail.objects.filter(invoice__status='confirmed').select_related(
+        'product_variant__product',
+        'product_variant__unit'
+    )
+
+    # Dùng cùng logic lọc cho chi tiết hóa đơn
+    if parsed_date_from or parsed_date_to:
+        if parsed_date_from:
+            detail_qs = detail_qs.filter(invoice__created_at__gte=make_aware_start(parsed_date_from))
+        if parsed_date_to:
+            detail_qs = detail_qs.filter(invoice__created_at__lte=make_aware_end(parsed_date_to))
+    else:
+        if year_int:
+            detail_qs = detail_qs.filter(invoice__created_at__year=year_int)
+        if month_int:
+            detail_qs = detail_qs.filter(invoice__created_at__month=month_int)
 
     product_map = {}
-    for detail in detail_qs.select_related('product_variant__product', 'product_variant__unit'):
+    for detail in detail_qs:
         key = detail.product_variant_id
         if key not in product_map:
             product_map[key] = {
@@ -995,6 +1132,7 @@ def sales_statistics(request):
                 'total_sold': 0,
                 'total_revenue': Decimal('0.00'),
             }
+
         product_map[key]['total_sold'] += detail.quantity
         product_map[key]['total_revenue'] += detail.subtotal or Decimal('0.00')
 
@@ -1004,6 +1142,7 @@ def sales_statistics(request):
         reverse=True,
     )[:10]
 
+    display_year = year_int if year_int else current_year
     years = range(current_year - 5, current_year + 1)
 
     return render(request, 'sales_statistics.html', {
@@ -1015,7 +1154,7 @@ def sales_statistics(request):
         'revenue_by_month': revenue_by_month,
         'top_selling_products': top_selling_products,
         'top_customers': top_customers,
-        'current_year': current_year,
+        'current_year': display_year,
         'date_from': date_from,
         'date_to': date_to,
         'month': month,
@@ -1389,10 +1528,6 @@ def account_list(request):
         'accounts': accounts
     })
 
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.shortcuts import redirect
-from .models import UserProfile
 
 @admin_required
 def account_create(request):

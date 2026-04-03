@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [    
 
-    path('', RedirectView.as_view(pattern_name='product_list', permanent=False)),
+    path('', RedirectView.as_view(pattern_name='login', permanent=False)),
     
     path('accounts/', include('django.contrib.auth.urls')),
     path('login/', views.SiteLoginView.as_view(), name='login'),

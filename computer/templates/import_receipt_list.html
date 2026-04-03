@@ -1,9 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load currency_filters %}
-{% block nav_button %}
 
-{% endblock %}
 
 {% block manage %}
   <div class="row mb-3">
@@ -25,10 +23,36 @@
   </div>
   <div class="container mt-4">
     <h4>Danh sách phiếu nhập</h4>
+     <div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Từ ngày</label>
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+      </div>
 
-    <a href="{% url 'import_receipt_create' %}" class="btn btn-primary mb-3">Tạo phiếu nhập</a>
+      <div class="col-md-3">
+        <label class="form-label">Đến ngày</label>
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+      </div>
 
-    <table class="table table-bordered">
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary text-nowrap px-4 btn-action">
+          Lọc
+        </button>
+        <a href="{% url 'sale_invoice_list' %}" class="btn btn-secondary text-nowrap px-4 btn-action">
+          Xóa lọc
+        </a>
+        <a href="{% url 'import_receipt_create' %}" class="btn btn-success text-nowrap px-4 btn-action">
+          + Tạo phiếu nhập
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+    
+</form>
+    <table id="receiptTable" class="table table-bordered">
       <thead>
         <tr>
           <th>ID</th>
@@ -85,7 +109,7 @@
                 <a href="{% url 'delete_import_receipt' r.id %}" onclick="return confirm('Bạn có chắc muốn xóa phiếu này không ?')"><img src="{% static 'icons/remove.png' %}" alt="detail" width="20px" height="20px" /></a>
               {% endif %}
               <a href="{% url 'import_receipt_detail' r.id %}"><img src="{% static 'icons/detail.png' %}" alt="detail" width="20px" height="20px" /></a>
-              <a href="{% url 'import_receipt_print' r.id %}"><img src="{% static 'icons/vga.png' %}" alt="detail" width="20px" height="20px" /></a>
+              <a href="{% url 'import_receipt_print' r.id %}"><img src="{% static 'icons/print.png' %}" alt="print" width="20px" height="20px"/></a>
               {% comment %} <a href="{% url 'payment_create' r.id %}" class="btn btn-warning btn-sm">Payment</a> {% endcomment %}
             </td>
           </tr>
@@ -97,32 +121,11 @@
 
 {% block script_manage %}
   <script>
-    /* =============================
-                           DataTable
-                        ============================= */
-    $(document).ready(function () {
-      $('#dataTable').DataTable({
-        buttons: ['copy', 'excel', 'pdf', 'print'],
-        layout: { topStart: 'buttons' },
-        paging: true,
-        select: true,
-        ordering: true,
-        responsive: true
-      })
-    })
+    
     
     $(document).ready(function () {
       $('#receiptTable').DataTable()
     })
-    
-    /* =============================
-                           Dark mode
-                        ============================= */
-    function dark_mode() {
-      var element = document.body
-      element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
-    }
-    
     /* =============================
                            Auto remove alert
                         ============================= */

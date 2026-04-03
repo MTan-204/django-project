@@ -297,15 +297,7 @@
 
 {% block script_manage %}
   <script>
-    $(document).ready(function () {
-      $('#dataTable').DataTable({
-        buttons: ['copy', 'excel', 'pdf', 'print'],
-        layout: { topStart: 'buttons' },
-        paging: true,
-        ordering: true,
-        responsive: true
-      })
-    })
+    
     
     document.querySelectorAll('.edit-account-btn').forEach(function (button) {
       button.addEventListener('click', function () {

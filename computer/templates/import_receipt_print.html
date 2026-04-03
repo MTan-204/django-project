@@ -254,8 +254,8 @@
               <td>{{ d.product_variant.product.name }}</td>
               <td>{{ d.product_variant.unit.name }}</td>
               <td>{{ d.quantity }}</td>
-              <td class="text-right">{{ d.price|floatformat:0|intcomma }} VNĐ</td>
-              <td class="text-right">{{ d.subtotal|floatformat:0|intcomma }} VNĐ</td>
+              <td class="text-right">{{ d.price|vnd }} VNĐ</td>
+              <td class="text-right">{{ d.subtotal|vnd }} VNĐ</td>
             </tr>
           {% empty %}
             <tr>
@@ -269,15 +269,15 @@
         <table>
           <tr>
             <td class="label">Tổng tiền nhập</td>
-            <td class="text-right">{{ receipt.total_amount|floatformat:0|intcomma }} VNĐ</td>
+            <td class="text-right">{{ receipt.total_amount|vnd }} VNĐ</td>
           </tr>
           <tr>
             <td class="label">Đã thanh toán</td>
-            <td class="text-right">{{ receipt.paid_amount|floatformat:0|intcomma }} VNĐ</td>
+            <td class="text-right">{{ receipt.paid_amount|vnd }} VNĐ</td>
           </tr>
           <tr>
             <td class="label">Còn nợ</td>
-            <td class="text-right">{{ receipt.debt|floatformat:0|intcomma }} VNĐ</td>
+            <td class="text-right">{{ receipt.debt|vnd }} VNĐ</td>
           </tr>
         </table>
       </div>
@@ -295,7 +295,7 @@
           {% for p in payments %}
             <tr>
               <td>{{ p.date|date:'d/m/Y H:i' }}</td>
-              <td class="text-right">{{ p.amount|floatformat:0|intcomma }} VNĐ</td>
+              <td class="text-right">{{ p.amount|vnd }} VNĐ</td>
               <td>{{ p.note|default:'' }}</td>
             </tr>
           {% empty %}
