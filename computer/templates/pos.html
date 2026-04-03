@@ -2,9 +2,7 @@
 {% load static %}
 {% load currency_filters %}
 
-{% block nav_button %}
-  
-{% endblock %}
+
 
 {% block manage %}
 <div class="container-fluid mt-4">
@@ -22,35 +20,13 @@
   <div class="row g-4">
     <!-- Cột trái: sản phẩm -->
     <div class="col-12 col-xl-7">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header">
-          <strong>Tìm sản phẩm</strong>
-        </div>
-        <div class="card-body">
-          <form method="GET" class="row g-2">
-            <div class="col-md-10">
-              <input
-                type="text"
-                name="q"
-                class="form-control"
-                placeholder="Tìm theo tên, hãng hoặc loại sản phẩm..."
-                value="{{ q }}"
-              >
-            </div>
-            <div class="col-md-2">
-              <button type="submit" class="btn btn-primary w-100">Tìm</button>
-            </div>
-          </form>
-        </div>
-      </div>
-
       <div class="card shadow-sm border-0">
         <div class="card-header">
           <strong>Danh sách sản phẩm</strong>
         </div>
         <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-bordered table-striped mb-0">
+            <table id="dataTable" class="table table-bordered table-striped mb-0" >
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
@@ -141,7 +117,6 @@
                     <form method="POST" action="{% url 'pos_update_cart' item.variant_id %}" class="d-flex gap-1">
                       {% csrf_token %}
                       <input type="number" name="quantity" min="0" value="{{ item.quantity }}" class="form-control form-control-sm">
-                      <button type="submit" class="btn btn-warning btn-sm">Lưu</button>
                     </form>
                   </td>
                   <td>{{ item.subtotal|vnd }}</td>
@@ -291,11 +266,15 @@
 
 {% block script_manage %}
 <script>
-  function dark_mode() {
-    var element = document.body
-    element.dataset.bsTheme = element.dataset.bsTheme == 'light' ? 'dark' : 'light'
-  }
-
+  $(document).ready(function() {
+  $('#dataTable').DataTable( {      
+    paging: true,
+    ordering: true,
+    responsive: true,
+    searching: true,
+    info: true
+  } );
+} );
   setTimeout(() => {
     const elem = document.getElementById('alert')
     if (elem) {
