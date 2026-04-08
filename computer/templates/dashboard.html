@@ -253,7 +253,7 @@
                 <tr>
                   <td>#{{ r.id }}</td>
                   <td>{{ r.supplier.name }}</td>
-                  <td>{{ r.total_amount|vnd }} VNĐ</td>
+                  <td>{{ r.final_amount|vnd }} VNĐ</td>
                   <td>
                     {% if r.payment_status == 'unpaid' %}
                       <span class="badge bg-danger">Chưa thanh toán</span>

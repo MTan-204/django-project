@@ -794,7 +794,7 @@ def dashboard(request):
 
     total_customer_debt = confirmed_sales.filter(customer__isnull=False).aggregate(
         total=Coalesce(
-            Sum(F('total_amount') - F('paid_amount')),
+            Sum(F('final_amount') - F('paid_amount')),
             money_zero,
             output_field=money_field
         )
@@ -802,7 +802,7 @@ def dashboard(request):
 
     today_revenue = confirmed_sales.filter(created_at__date=today).aggregate(
         total=Coalesce(
-            Sum('total_amount'),
+            Sum('final_amount'),
             money_zero,
             output_field=money_field
         )
@@ -810,7 +810,7 @@ def dashboard(request):
 
     month_revenue = confirmed_sales.filter(created_at__date__gte=first_day_of_month).aggregate(
         total=Coalesce(
-            Sum('total_amount'),
+            Sum('final_amount'),
             money_zero,
             output_field=money_field
         )
@@ -874,7 +874,7 @@ def customer_debt_list(request):
         .annotate(
             invoice_count=Count('id'),
             total_purchase=Coalesce(
-                Sum('total_amount'),
+                Sum('final_amount'),
                 money_zero,
                 output_field=money_field
             ),
@@ -886,7 +886,7 @@ def customer_debt_list(request):
             total_debt=Coalesce(
                 Sum(
                     ExpressionWrapper(
-                        F('total_amount') - F('paid_amount'),
+                        F('final_amount') - F('paid_amount'),
                         output_field=money_field
                     )
                 ),
@@ -899,7 +899,7 @@ def customer_debt_list(request):
 
     summary = SaleInvoice.objects.filter(status='confirmed', customer__isnull=False).aggregate(
         total_purchase=Coalesce(
-            Sum('total_amount'),
+            Sum('final_amount'),
             money_zero,
             output_field=money_field
         ),
@@ -911,7 +911,7 @@ def customer_debt_list(request):
         total_debt=Coalesce(
             Sum(
                 ExpressionWrapper(
-                    F('total_amount') - F('paid_amount'),
+                    F('final_amount') - F('paid_amount'),
                     output_field=money_field
                 )
             ),
@@ -941,7 +941,7 @@ def customer_debt_detail(request, customer_id):
 
     summary = invoices.aggregate(
         total_purchase=Coalesce(
-            Sum('total_amount'),
+            Sum('final_amount'),
             money_zero,
             output_field=money_field
         ),
@@ -953,7 +953,7 @@ def customer_debt_detail(request, customer_id):
         total_debt=Coalesce(
             Sum(
                 ExpressionWrapper(
-                    F('total_amount') - F('paid_amount'),
+                    F('final_amount') - F('paid_amount'),
                     output_field=money_field
                 )
             ),
